@@ -67,7 +67,6 @@
 \newcommand{\ask}{\ensuremath{\mathsf{ask}}}
 \newcommand{\aksym}{\ensuremath{\mathsf{ak}}}
 \newcommand{\nksym}{\ensuremath{\mathsf{nk}}}
-\newcommand{\ivk}{\ensuremath{\mathsf{ivk}}}
 \newcommand{\fvk}{\ensuremath{\mathsf{fvk}}}
 \newcommand{\ovk}{\ensuremath{\mathsf{ovk}}}
 \newcommand{\dk}{\ensuremath{\mathsf{dk}}}
@@ -75,7 +74,6 @@
 \newcommand{\gd}{\ensuremath{\mathsf{g_d}}}
 \newcommand{\rcv}{\ensuremath{\mathsf{rcv}}}
 \newcommand{\rcm}{\ensuremath{\mathsf{rcm}}}
-\newcommand{\rivk}{\ensuremath{\mathsf{r_{ivk}}}}
 \newcommand{\rsk}{\ensuremath{\mathsf{rsk}}}
 
 \title{\textbf{\Huge Halo 2 Guide}\\[6pt]\large The Halo 2 proof system, from arithmetisation to recursion}
@@ -85,7 +83,7 @@
 \maketitle
 \thispagestyle{empty}
 \begin{abstract}
-This is the third volume of a four-part series --- \emph{Math Guide}, \emph{Crypto Guide}, \emph{Halo~2 Guide}, \emph{Orchard Guide}. Assuming the mathematics of the \emph{Math Guide} and the cryptographic primitives of the \emph{Crypto Guide}, it develops the Halo~2 proof system: the polynomial-IOP design pattern, a rigorous account of knowledge soundness in the algebraic group model, proof-carrying data and accumulation schemes, and finally Halo~2 itself --- PLONKish arithmetisation, the permutation and lookup arguments, the inner-product polynomial commitment and the Halo accumulation trick, and the complete protocol.
+This is the third volume of a four-part series --- \emph{Math Guide}, \emph{Crypto Guide}, \emph{Halo~2 Guide}, \emph{Orchard Guide}. Assuming the mathematics of the \emph{Math Guide} and the cryptographic primitives of the \emph{Crypto Guide}, it develops the Halo~2 proof system: the polynomial-IOP design pattern, a rigorous account of knowledge soundness and the algebraic group model, recursive proof composition and accumulation schemes, and finally Halo~2 itself --- PLONKish arithmetisation, the permutation and lookup arguments, the inner-product polynomial commitment and the Halo accumulation trick, and the complete protocol.
 \end{abstract}
 \clearpage
 \tableofcontents
@@ -104,8 +102,8 @@ The development proceeds in four steps. First, we make the polynomial-IOP design
 recipe ``encode a computation as polynomial identities over an evaluation domain, then compile to a
 succinct argument with a polynomial commitment.'' Next, we treat knowledge soundness rigorously,
 including the algebraic group model and the tree-of-transcripts extractor that the inner-product
-argument requires. We then develop proof-carrying data, incrementally-verifiable computation, and
-the accumulation schemes that make recursion practical. Finally, we assemble Halo~2 itself:
+argument requires. We then motivate recursive proof composition and develop the accumulation
+schemes that make it practical. Finally, we assemble Halo~2 itself:
 PLONKish arithmetisation, the permutation and lookup arguments, the inner-product polynomial
 commitment with a worked example and its accumulation (the ``Halo trick''), and the complete
 seven-phase protocol. The \emph{Orchard Guide} subsequently uses this proof system to construct a shielded
@@ -168,8 +166,9 @@ where $Q$ is the adversary's RO-query budget.
 
 This factoring is of considerable utility: research on PIOPs (PLONK, Marlin,
 Spartan, HyperPlonk, $\dots$) proceeds independently of research on
-polynomial commitment schemes, and one may combine any compatible pair to
-produce a new SNARK with mixed-and-matched properties. This document
+polynomial commitment schemes, and any compatible pair combines into a new
+SNARK that inherits the PIOP's relation and the commitment scheme's
+cryptographic profile. This document
 develops the one PCS that Halo 2 uses --- the inner-product argument
 (\S\ref{sec:ipa-detail}) --- and treats the PIOP/PCS split only insofar as
 it clarifies the Halo 2 construction.
@@ -208,12 +207,13 @@ oracles are:
 \begin{itemize}[leftmargin=*]
 \item One advice polynomial per advice column.
 \item A permutation running-product polynomial $Z_{\mathrm{perm}}$.
+\item Two permuted lookup columns \(A'\), \(S'\) per lookup.
 \item One lookup running-product polynomial per lookup.
 \item A quotient polynomial $h$ (split into chunks).
 \end{itemize}
-Its challenges are $\beta, \gamma$ (for the permutation argument),
-$\theta$ (for lookup column compression), $y$ (for the gate-equation
-combination), $x$ (the final evaluation point). Its final check is the
+Its challenges are, in order: $\theta$ (lookup column compression),
+$\beta, \gamma$ (the permutation and lookup products), $y$ (the
+gate-equation combination), and $x$ (the final evaluation point). Its final check is the
 PLONK gate equation $C(x) = h(x) \cdot Z_H(x)$, which the verifier checks from
 the evaluations of the oracles at $x$ (and possibly $\omega x$).
 
@@ -249,23 +249,19 @@ with negligible probability.
 WEE captures simultaneously two properties: ``the extractor produces a witness whenever
 the protocol accepts'' and ``the extractor's external behaviour resembles
 a normal protocol execution.'' It is the appropriate notion for arguments
-embedded in larger protocols (e.g., for batched proofs or for verifying
-Halo 2 proofs within a Halo 2 verifier circuit).
+embedded in larger protocols, such as the batched verification of many
+proofs at once (\S\ref{sec:halo-acc}).
 
 \subsection{The algebraic group model}
 
 The IPA's knowledge-soundness proof proceeds through the tree extractor of
-\S\ref{sec:ipa-detail}, with knowledge error $O(d / |\F|)$. The number of
-prover invocations the extractor makes is $O(d)$, but converting those
-invocations into a standard-model reduction to DL via iterated forking is
-loose: each of the $\log d$ rounds contributes a multiplicative blow-up,
-so the standard-model extractor runs in quasi-polynomial time
-$d^{O(\log d)}$ rather than strict polynomial time. The algebraic group
-model removes this loss.
-
+\S\ref{sec:ipa-detail}, with knowledge error $O(d / |\F|)$. Obtaining the
+tree of accepting transcripts in the standard model by iterated forking,
+however, is loose: each of the $\log d$ rounds contributes a
+multiplicative blow-up, so the standard-model reduction to DL runs in
+quasi-polynomial time $d^{O(\log d)}$ rather than strict polynomial time.
 The \emph{algebraic group model} (AGM; Fuchsbauer, Kiltz, Loss; CRYPTO
-2018) provides a tighter analysis by restricting the adversary's group
-operations.
+2018) removes this loss by restricting the adversary's group operations.
 
 \begin{definition}[Algebraic adversary]\label{def:algebraic}
 An \emph{algebraic adversary} against a group $\G$ is a $\PPT$ algorithm
@@ -275,18 +271,21 @@ $P = \sum_i [a_i] Q_i$ expressing $P$ as a combination of previously-seen
 group elements $Q_i$.
 \end{definition}
 
-The AGM is intermediate between the standard model (no restrictions on the
-adversary) and the generic group model (the adversary can access group
-operations only via an oracle). Many real adversaries are algebraic --- they
-compute group elements via known scalar multiplications and additions ---
-so AGM analyses are often sharper than standard-model analyses while
-remaining heuristically conservative.
-
-For Halo 2, BCMS20 conduct the accumulation analysis in the AGM. The resulting
-extractor is polynomial in the round count $k = \log d$, neither exponential
-nor quasi-polynomial: each algebraic adversary's group-element outputs
-come with explicit linear combinations, so the extractor reads
-off the witness from the combinations.
+The AGM sits between the standard model (no restriction on the adversary)
+and the generic group model (group operations available only through an
+oracle). Most natural adversaries are algebraic --- they compute group
+elements by known scalar multiplications and additions --- so the
+heuristic is regarded as conservative. In the AGM the forking loss
+disappears: an algebraic prover outputs every group element together with
+an explicit linear combination of the elements it has seen, so the
+extractor reads candidate witnesses directly off these representations
+instead of reassembling them from forked transcripts. Ghoshal and Tessaro
+(CRYPTO 2021) carry out this analysis for Bulletproofs-style
+inner-product arguments, proving tight state-restoration soundness ---
+and hence tight Fiat--Shamir security --- in the AGM. The accumulation
+analysis of BCMS20, by contrast, does not invoke the AGM: it proves
+security in the random oracle model under the DL assumption
+(Theorem~\ref{thm:bcms20-acc}).
 
 \subsection{Tree-extractor analysis}
 
@@ -314,11 +313,13 @@ $(u_j^{-2}, 1, u_j^2)$ is non-zero when the three challenges are distinct
 a factor $O(1/|\F|)$ to the knowledge error.
 \end{proof}
 
-The full extraction requires three transcripts at each round, giving a tree of
-$3^k$ leaves and $O(d)$ prover invocations. In the AGM, each prover
-invocation is direct (the extractor reads the algebraic representation);
-in the standard model with forking, each invocation costs $1/p^*$ expected
-queries to the prover, yielding total cost $O(d \cdot \mathsf{poly}(\lambda) / p^*)$.
+The full extraction requires three accepting transcripts at each of the
+$k = \log_2 d$ rounds, giving a tree of $3^k = d^{\log_2 3} \approx d^{1.585}$
+leaves --- polynomial in $d$, though more than the $O(d)$ a binary tree
+would cost. In the AGM, each prover invocation is direct (the extractor
+reads the algebraic representation); in the standard model with forking,
+each invocation costs $1/p^*$ expected queries to the prover, yielding
+total cost $O(d^{\log_2 3} \cdot \mathsf{poly}(\lambda) / p^*)$.
 
 \subsection{Concrete versus asymptotic security}
 
@@ -330,74 +331,54 @@ factor exponential in the round count $\log d$ (equivalently,
 quasi-polynomial $d^{O(\log d)}$ in the degree bound $d$).
 \item Halo 2's deployed parameters assume the AGM and/or the random oracle
 model heuristically.
-\item PLONK's original ZK simulation had a gap, since fixed; see Sefranek,
-``How (Not) to Simulate PLONK'' (SCN 2024).
 \end{itemize}
 
 This reflects the practical reality of deployed SNARKs: tight reductions
 in idealised models, loose reductions in standard models, and deployment
 selecting the former.
 
-\section{PCD, IVC, and accumulation schemes}\label{sec:pcd}
+\section{Recursive proof composition and accumulation schemes}\label{sec:pcd}
 
-We now turn to the most modern part of the foundations: recursive proof
-composition. This is what makes Halo 2's ``no trusted setup with recursion''
-combination possible, and what underlies any rollup architecture.
+We now turn to recursive proof composition: proving, inside one proof,
+that another proof verifies. This is what makes Halo 2's combination of
+``no trusted setup'' with recursion possible. Orchard's mainnet
+deployment does not recurse, but the accumulation structure shapes the
+deployed verifier nonetheless --- the deferred MSM and the batched
+verification of \S\ref{sec:halo-acc} --- so we develop it with care.
 
-\subsection{Incrementally-verifiable computation}
+\subsection{Recursion and its two classical obstacles}
 
-\begin{definition}[IVC, informal]\label{def:ivc}
-An \emph{incrementally-verifiable computation} (IVC; Valiant, TCC 2008) is
-a scheme for proving the correctness of a computation
-$z_n = f^{(n)}(z_0) := f(f(\dots f(z_0) \dots))$ such that at each step
-$z_{i+1} = f(z_i)$, the prover produces a proof $\pi_{i+1}$ asserting that
-$z_{i+1}$ is the correct $i+1$-st iterate. The prover at step $i+1$ has
-access to $\pi_i$ and produces $\pi_{i+1}$ in time independent of $i$ (up
-to logarithmic factors).
-\end{definition}
+Consider a computation iterated many times,
+$z_n = f^{(n)}(z_0) := f(f(\dots f(z_0) \dots))$ --- Valiant's
+\emph{incrementally-verifiable computation} (TCC 2008) --- or, more
+generally, a DAG of computations each consuming the proofs of its
+predecessors --- \emph{proof-carrying data} (Chiesa, Tromer; ICS 2010).
+The natural construction is \emph{recursive SNARK composition}: at step
+$i + 1$ the prover proves ``$z_{i+1} = f(z_i)$, \emph{and} there exists
+a proof $\pi_i$ that the verifier circuit for step $i$ accepts.'' One
+proof then attests to the entire history, and the per-step proving cost
+is independent of the history's length.
 
-The classical approach to IVC is \emph{recursive SNARK composition}: at step
-$i + 1$, prove
-``$z_{i+1} = f(z_i)$ AND there exists $\pi_i$ accepting against the
-verifier circuit for step $i$.'' The proof $\pi_{i+1}$ thereby attests to
-the full chain of steps, recursively.
-
-For this to work, the SNARK's verifier must be efficiently expressible as
-a circuit. This is non-trivial: pairing-based SNARKs require an in-circuit
-pairing check (expensive), while STARK verifiers require in-circuit hash
-computations (also expensive). The Halo line addresses this differently.
-
-\begin{definition}[PCD, informal]\label{def:pcd}
-\emph{Proof-carrying data} (PCD; Chiesa, Tromer; ICS 2010) generalises
-IVC: instead of a linear chain of computations, the protocol supports an
-arbitrary DAG of computations, each of which may consume multiple parent
-proofs and produce one descendant proof.
-\end{definition}
-
-A rollup chain of $N$ transactions is naturally a PCD instance: each block
-consumes the previous block's proof plus the new transaction batch, and
-produces a single proof attesting to the entire history.
-\subsection{Naive recursion and its failure to scale}
-
-The naive approach to IVC proves, at step $i$, the statement ``$z_i = f(z_{i-1})$ AND
-$\mathsf{Verify}(\mathsf{vk}, z_{i-1}, \pi_{i-1}) = 1$,'' compiled to a SNARK.
-
-This succeeds in principle but encounters two practical obstacles:
+For this to work, the SNARK's verifier must itself be efficiently
+expressible as a circuit, and here the classical instantiations meet two
+obstacles:
 \begin{enumerate}[leftmargin=*]
-\item For pairing-based SNARKs, the verifier circuit contains a pairing
-equation, which is costly to express algebraically inside a circuit
-(it requires extension-field arithmetic).
-\item For SNARKs with linear-time verifiers (such as Halo 2's $O(d)$ MSM),
-the linear-time check dominates the verifier circuit, which negates
-the per-step efficiency.
+\item Pairing-based SNARKs have constant-size, constant-time verifiers,
+but the verifier evaluates a pairing --- costly to express algebraically
+inside a circuit, since it requires extension-field arithmetic --- and
+these SNARKs need a trusted setup besides.
+\item Transparent SNARKs built on the IPA need no pairing and no trusted
+setup, but their verifiers run in linear time --- the $O(d)$ MSM of
+\S\ref{sec:gpoly}. A linear-time check dominates the verifier circuit
+and negates the per-step efficiency.
 \end{enumerate}
-The accumulation paradigm addresses (2). For (1), Halo / Halo 2 avoids
-the issue by using IPA instead of pairings.
+Halo (Bowe--Grigg--Hopwood 2019) defeats obstacle 2 directly ---
+deferring the linear-time part of verification instead of recomputing it
+at every step --- and sidesteps obstacle 1 by using the IPA, which
+involves no pairing. BCMS20 formalised the deferral as an
+\emph{accumulation scheme}.
 
 \subsection{Accumulation schemes}
-
-The central insight, due to Bowe--Grigg--Hopwood for Halo and which BCMS20
-formalised, is the following.
 
 \begin{definition}[Accumulation scheme, informal]\label{def:acc}
 For a predicate $\Phi$ (for example, ``this IPA opening is correct''), an
@@ -406,8 +387,9 @@ For a predicate $\Phi$ (for example, ``this IPA opening is correct''), an
 \item An \emph{accumulator}, a compact data structure representing a batch
 of claims about $\Phi$.
 \item A \emph{folding} algorithm: given an old accumulator and a new claim
-about $\Phi$, it produces a new accumulator that morally ``contains'' both.
-The folding is fast (sub-linear in the claim size).
+about $\Phi$, it produces a new accumulator that represents both --- the
+new accumulator is valid only if the old one was valid and the new claim
+holds. Folding is fast: $O(\log d)$ in the IPA instantiation below.
 \item A \emph{decider}, which is expensive (linear-time) but which the scheme
 invokes only once at
 the very end to validate the accumulator. If the decider accepts, every
@@ -415,28 +397,15 @@ claim folded in so far is true.
 \end{itemize}
 \end{definition}
 
-\begin{theorem}[BCMS20 accumulation, informal]\label{thm:bcms20}
-For the IPA-PCS, there exists an accumulation scheme in which:
-\begin{itemize}[leftmargin=*]
-\item An accumulator is a tuple
-$\mathsf{Acc} := (G^{(0)}, u_1, \dots, u_k) \in \G \times \F^k$,
-representing the claim that $G^{(0)} = \Comm(g(X; u_1, \dots, u_k))$.
-\item Folding two accumulators runs in $O(\log d)$ time, producing a new
-accumulator that is valid iff both inputs were.
-\item The decider performs one $O(d)$-size MSM to check validity.
-\item Soundness reduces to DL on $\G$ in the random oracle model.
-\end{itemize}
-\end{theorem}
+For the IPA-PCS such a scheme exists, and it resolves the recursion
+problem in the IPA setting: the in-circuit verifier checks only the
+$O(\log d)$ ``succinct'' part of an IPA proof and folds the $O(d)$
+``deferred'' MSM check into a running accumulator. The decider pays the
+deferred work once, at the end of the entire chain. We state the scheme
+precisely as Theorem~\ref{thm:bcms20-acc}, once the IPA construction of
+\S\ref{sec:ipa-detail} is in hand.
 
-This resolves the IVC problem in the IPA setting: the in-circuit verifier
-need only check the $O(\log d)$ ``succinct'' parts of an IPA proof and fold the
-$O(d)$ ``deferred'' MSM check into a running accumulator. The decider pays the
-deferred
-work once, at the end of the entire chain.
-Theorem~\ref{thm:bcms20-acc} restates this concretely once we have the IPA
-construction in hand.
-
-\subsection{The necessity of a cycle of curves}
+\subsection{The necessity of a cycle of curves}\label{sec:cycle}
 
 The accumulation scheme's in-circuit folding involves arithmetic on group
 elements of the underlying curve. For this to be efficient inside the
@@ -448,9 +417,11 @@ elements have coordinates in $\F_p$, so verifying it natively would require
 a circuit whose native field is $\F_p$. But a SNARK's verifier circuit
 naturally operates over the curve's \emph{scalar} field $\F_q$ (where
 $q = |E_p|$): the Fiat--Shamir challenges and folding scalars are $\F_q$
-elements. Since a single curve cannot have $\F_p = \F_q$, no one curve
-$E_p$ can host both the proof's coordinates and its own verifier circuit
-natively.
+elements. Curves with $p = q$ do exist --- the \emph{anomalous} curves,
+with trace of Frobenius $1$ --- but on them the discrete logarithm is
+computable in polynomial time (Smart; Semaev; Satoh--Araki, 1998--99), so
+no \emph{secure} curve has $\F_p = \F_q$, and no one curve $E_p$ can host
+both the proof's coordinates and its own verifier circuit natively.
 
 The resolution is a \emph{2-cycle} of elliptic curves, where $|E_p| = q$ and
 $|E_q| = p$. Then:
@@ -465,27 +436,6 @@ $E_p$, enabling native manipulation of $E_p$'s group elements.
 This is precisely the Pasta cycle of the \emph{Math Guide},
 where the two curves are Pallas (over $\F_{p_{\Pallas}}$, order $p_{\Vesta}$)
 and Vesta (over $\F_{p_{\Vesta}}$, order $p_{\Pallas}$).
-
-\subsection{Connection to the Halo 2 protocol}
-
-The Halo 2 protocol (\S\ref{sec:halo2-full}) ends each proof
-with a deferred-MSM relation $G^{(0)} \stackrel{?}{=} \Comm(g)$. In a
-non-recursive deployment (the current Orchard), the verifier pays this MSM
-as part of the standard verification cost. In a recursive
-deployment, an accumulator absorbs the same MSM check, defers it
-across a chain of proofs, and the final decider pays it alone.
-
-The Pasta cycle renders the folding step efficient. In a recursive
-deployment, a Vesta-IPA proof contains in its circuit a verifier of the
-previous Pallas-IPA proof. The Vesta circuit's native field is
-$\F_{p_{\Pallas}}$ (the Vesta scalar field), which coincides with the
-coordinate field of Pallas points. The in-circuit verifier can therefore
-manipulate Pallas group elements ($\cmsym$, $\rk$, $\cvsym^{\mathsf{net}}$,
-the accumulator's $G^{(0)}$) using native field arithmetic. The next
-proof, a Pallas-IPA proof with native field $\F_{p_{\Vesta}}$, verifies
-that Vesta proof using the symmetric argument. This ``cross-curve hop''
-between Pallas and Vesta is what enables proof-carrying data without
-expensive non-native field simulation.
 
 \section{The Halo 2 proof system}\label{sec:halo2}
 
@@ -533,7 +483,8 @@ vanishing on rows where the gate is inactive. The Orchard Action circuit
 uses ten advice columns plus a small fixed-column lookup table for
 Sinsemilla; its custom gates encode the algebraic constraints of the
 Action statement (the \emph{Orchard Guide}) together with the
-incomplete-addition arithmetic for in-circuit elliptic-curve operations.
+complete- and incomplete-addition arithmetic for in-circuit
+elliptic-curve operations (the \emph{Math Guide} names the distinction).
 
 \paragraph{Polynomial representation.}
 The Lagrange basis $\ell_j(X)$ for $H$, where $\ell_j(\omega^j) = 1$
@@ -562,7 +513,8 @@ to a running-product polynomial $Z_{\mathrm{perm}}(X)$ asserting
 Two values appear in equality-constrained cells iff this product over the
 trace equals $1$. The verifier checks this by opening $Z_{\mathrm{perm}}$
 at $x$ and $\omega x$, verifying the boundary $Z_{\mathrm{perm}}(\omega^0) = 1$
-and the row-by-row update. The per-proof verifier work is $O(m + \log n)$.
+and the row-by-row update. The per-proof verifier work is $O(m + \log n)$,
+where $m$ denotes the number of columns participating in the permutation.
 
 \subsection{The lookup argument}\label{sec:lookup}
 
@@ -578,8 +530,8 @@ The prover supplies polynomials $A'(X), S'(X)$ where (i) $A'$ is a
 permutation of $A$ with like values grouped into contiguous runs, and
 (ii) $S'$ is a permutation of $S$ in which the first row of each run of
 like values in $A'$ has the matching value in $S'$. The prover commits to
-a running-product column $Z_{\mathrm{lookup}}(X)$, then after challenges
-$\beta, \gamma$ proves:
+$A'$ and $S'$; after receiving challenges $\beta, \gamma$, it commits to
+a running-product column $Z_{\mathrm{lookup}}(X)$ and proves:
 \begin{align*}
 \ell_0(X) \bigl(1 - Z_{\mathrm{lookup}}(X)\bigr) &= 0,\\
 Z_{\mathrm{lookup}}(\omega X)(A'(X) + \beta)(S'(X) + \gamma) - Z_{\mathrm{lookup}}(X)(A(X) + \beta)(S(X) + \gamma) &= 0,\\
@@ -598,6 +550,21 @@ $A_{\mathrm{c}}(X) := \sum_j \theta^{m-1-j} A_j(X)$. Variable tables
 (where $S$ is itself an advice column) and range checks
 (where $S$ enumerates the allowed range) are special cases.
 
+\begin{remark}[Active rows and blinding]\label{rem:active-rows}
+The lookup constraints above, like the permutation constraints of
+\S\ref{sec:perm}, hold on the \emph{active} rows only: the deployed
+system reserves the trailing rows of every column for random blinding
+values (\S\ref{sec:halo-zk}). Each product-update constraint is therefore
+multiplied by the factor
+$\bigl(1 - (q_{\mathrm{last}}(X) + q_{\mathrm{blind}}(X))\bigr)$, where
+the fixed columns $q_{\mathrm{blind}}$ and $q_{\mathrm{last}}$ select the
+blinding rows and the boundary row immediately before them, and boundary
+constraints such as
+$\ell_{\mathrm{last}}(X)\bigl(Z(X)^2 - Z(X)\bigr) = 0$ pin the running
+product to $\{0, 1\}$ at the boundary row. The random rows consequently
+neither violate the arguments nor weaken them.
+\end{remark}
+
 \subsection{The inner-product polynomial commitment}\label{sec:ipa-detail}
 
 The Halo 2 polynomial commitment, instantiating the abstract PCS of
@@ -605,8 +572,10 @@ the \emph{Crypto Guide}, is the inner-product argument of
 Bootle--Cerulli--Chaidos--Groth--Petit (EUROCRYPT 2016) as refined in
 Bulletproofs (B\"unz et al., 2017). We give the construction in detail.
 Write $d := 2^k$ for the degree bound (equivalently, the number of
-generators); in the assembled protocol of \S\ref{sec:halo2-full} the
-committed polynomials have degree $< n$, so $d = n$ there.
+generators); the round count $k = \log_2 d$ reuses the letter $k$ of
+Definition~\ref{def:plonkish}, harmlessly, because in the assembled
+protocol of \S\ref{sec:halo2-full} the committed polynomials have degree
+$< n$, so $d = n = 2^k$ there.
 
 \begin{construction}[IPA-based polynomial commitment]\label{const:ipa}
 Let $\G$ be a cyclic group of prime order $p$ in which DL is hard. Choose
@@ -737,25 +706,33 @@ $\Rel_{\mathrm{IPA}}$ with knowledge error $O(d / |\F_p|)$.
 
 \begin{proof}[Sketch of the tree extractor]
 The extractor rewinds the prover $\mathcal{P}^*$ to obtain, at each
-round, two transcripts that agree on $(L_j, R_j)$ but differ in $u_j$.
-The two corresponding verifier equations form a $2 \times 2$ linear
-system in the round-$j$ halved witness whose Vandermonde determinant is
-$(u_j^2 - u_j'^2)/(u_j u_j')$, non-zero whenever $u_j \ne \pm u_j'$. This
-recovers the witness halves $\vec{a}_{\mathrm{lo}}^{(j)},
-\vec{a}_{\mathrm{hi}}^{(j)}$.
+round, \emph{three} accepting transcripts that agree on $(L_j, R_j)$ but
+carry pairwise distinct challenges $u_j$. The round-$j$ verification
+equation involves the three monomials $u_j^{-2}, 1, u_j^2$, whose
+coefficients --- the unknown representations of $L_j$, the folded
+commitment, and $R_j$ over the generators --- the extractor must
+determine; two transcripts would leave this system underdetermined.
+Three challenges with pairwise distinct squares (\(u \ne \pm u'\); the
+colliding pairs are excluded below) yield three linear equations whose
+\(3 \times 3\) Vandermonde-type determinant in \(u^2\) is non-zero, so
+the extractor solves for the
+round-$j$ witness halves $\vec{a}_{\mathrm{lo}}^{(j)},
+\vec{a}_{\mathrm{hi}}^{(j)}$ (Lemma~\ref{lem:single-round}).
 
-Extracting the full witness $\vec{a} \in \F_p^d$ requires two successful
-transcripts at the deepest level, then for \emph{each pair}, two
-transcripts at the next-shallower level, and so on. The tree has
-$2^k = d$ leaves, yielding polynomial expected extraction time when
-$d = \poly(\lambda)$. The knowledge error of $O(d / |\F_p|)$ accounts
-for the probability that any $2d$ challenges in the tree happen to
-collide, which a union bound renders negligible.
+Extracting the full witness $\vec{a} \in \F_p^d$ requires three
+successful transcripts at the deepest level, then for \emph{each triple},
+three transcripts at the next-shallower level, and so on. The tree has
+$3^k = d^{\log_2 3}$ leaves --- polynomial in $d$ (\S\ref{sec:ks}) ---
+yielding polynomial expected extraction time when $d = \poly(\lambda)$.
+The knowledge error of $O(d / |\F_p|)$ accounts for the probability of
+challenge collisions (e.g.\ $u_j = \pm u_j'$) anywhere in the tree, which
+a union bound renders negligible.
 
-This is the recursive generalisation of 2-special soundness for Schnorr
-(the \emph{Crypto Guide}): a single transcript reveals nothing, but two
-transcripts on the same first message permit inversion of a $2 \times 2$
-system; in IPA the inversion is structured but the principle is identical.
+This is the recursive generalisation of special soundness for Schnorr
+(the \emph{Crypto Guide}): a single transcript reveals nothing, but a few
+transcripts on the same first message permit inversion of a small linear
+system; in the IPA the system is $3 \times 3$ per round and the recursion
+stacks $k$ rounds.
 \end{proof}
 \subsection{Accumulation and the Halo trick}\label{sec:halo-acc}
 
@@ -796,8 +773,22 @@ challenge $\rho$, reduce two MSM checks to one,
 $\Acc'' := \Acc + \rho \cdot \Acc'$.
 \end{enumerate}
 A single final MSM at the end of the chain validates the entire history.
-The Pasta cycle ensures the in-circuit scalar arithmetic on each step is
-native, as we develop in \S\ref{sec:pcd}.
+The Pasta cycle (\S\ref{sec:cycle}) renders each step native: a
+Vesta-IPA proof's circuit, whose native field is the Vesta scalar field
+$\F_{p_{\Pallas}}$, verifies the previous Pallas-IPA proof, whose group
+elements ($\cmsym$, $\rk$, $\cvsym^{\mathsf{net}}$, the accumulator's
+$G^{(0)}$) have coordinates in exactly that field; the next Pallas proof
+verifies the Vesta proof by the symmetric argument. This cross-curve
+alternation is what enables proof-carrying data without expensive
+non-native field simulation.
+
+Orchard's deployment does not recurse: the verifier of an Action proof
+pays the deferred MSM itself, as part of the standard verification cost.
+Even there the accumulation idea is load-bearing: a Zcash node verifying
+many Action proofs takes a random linear combination of their deferred
+MSMs and evaluates the combination as one MSM, amortising the linear-time
+work across the whole batch --- the deployed, non-recursive use of the
+same algebraic structure.
 
 The mathematical core is the recognition that
 $G^{(0)} = \Comm(g(X; u_1, \dots, u_k))$ --- the linear-time check is
@@ -819,32 +810,55 @@ fixed-column polynomials $f_i(X)$, selector polynomials $q_i(X)$,
 permutation polynomials $s_i(X)$, and lookup-table polynomials $S_j(X)$,
 together with the Lagrange basis on $H$, the vanishing polynomial
 $Z_H(X) := X^n - 1$, and the IPA generators $\vec{G} \in \G^n$ and
-$H \in \G$.
+$H \in \G$. The commitments to the fixed, selector, and permutation
+polynomials, together with the domain parameters, constitute the
+\emph{verifying key} $\mathsf{vk}$; every part of it is recomputable from
+the public circuit description, which is why no trusted setup exists. To
+verify a proof one needs exactly three inputs: $\mathsf{vk}$, the
+instance (public-input) values, and the proof itself.
 
 \paragraph{Phase 1 --- advice commitments.}
-The prover constructs the advice column values $\vec{w_i} \in \F^n$
-satisfying all gates and equality constraints; interpolates each
-$\vec{w_i}$ to a polynomial $w_i(X)$ of degree $< n$ on $H$; adds a
-random low-degree blinding polynomial for ZK; commits via IPA-PCS; sends
-the commitments.
+Both parties first absorb a digest of $\mathsf{vk}$ and the (unblinded)
+instance commitments into the transcript (\S\ref{sec:instance}), so every
+subsequent challenge depends on the circuit and the public input. The
+prover then constructs the advice column values $\vec{w_i} \in \F^n$
+satisfying all gates and equality constraints; fills the reserved
+trailing rows with uniformly random field elements (the blinding rows of
+\S\ref{sec:halo-zk}); interpolates each $\vec{w_i}$ to a polynomial
+$w_i(X)$ of degree $< n$ on $H$; commits via IPA-PCS with a fresh
+blinder; sends the commitments.
 
-\paragraph{Phase 2 --- lookup challenges $\theta, \beta, \gamma$.}
-For each lookup, the verifier (via Fiat--Shamir) returns challenges:
-$\theta$ to compress multi-column lookups, $\beta, \gamma$ to instantiate
-the running-product. The prover commits to $A', S', Z_{\mathrm{lookup}}$.
+\paragraph{Phase 2 --- lookup compression: challenge $\theta$.}
+The verifier (via Fiat--Shamir, here and throughout) returns
+$\theta \in \F$. For each lookup the prover compresses multi-column
+inputs and tables with powers of $\theta$, computes the permuted columns
+$A', S'$ (\S\ref{sec:lookup}), and commits to them.
 
-\paragraph{Phase 3 --- permutation argument.}
-The prover constructs $Z_{\mathrm{perm}}(X)$ as in \S\ref{sec:perm} and
-commits to it.
+\paragraph{Phase 3 --- running products: challenges $\beta, \gamma$.}
+The verifier returns $\beta, \gamma \in \F$. The prover commits to the
+permutation running product $Z_{\mathrm{perm}}$ (\S\ref{sec:perm}) and to
+one lookup running product $Z_{\mathrm{lookup}}$ per lookup
+(\S\ref{sec:lookup}). The order matters for soundness: the permuted
+columns $A', S'$ must be fixed \emph{before} the challenges
+$\beta, \gamma$ that randomise the products are drawn.
 
 \paragraph{Phase 4 --- quotient challenge $y$.}
 The verifier returns a fresh $y \in \F$. The prover assembles the
 \emph{gate equation}: a single polynomial $C(X)$ that is a $y$-weighted
 linear combination of (i) each custom gate, (ii) permutation constraints,
 (iii) lookup constraints. By construction $C(X)$ vanishes on $H$ when
-all gates pass. The prover computes the quotient
-$h(X) := C(X) / Z_H(X) = C(X) / (X^n - 1)$, splits $h$ into chunks of
-degree $< n$, and commits to each chunk.
+all gates pass, so the quotient
+$h(X) := C(X) / Z_H(X) = C(X) / (X^n - 1)$ is a polynomial. Its degree,
+however, is bounded by \(d(n-1) - n = (d-1)(n-1) - 1\) for maximum gate
+degree \(d\) --- a gate of degree \(d\) multiplies up to \(d\) column
+polynomials of degree \(< n\), and division by \(Z_H\) removes \(n\) ---
+which exceeds the IPA's degree bound $n$. The prover therefore
+splits $h$ into \(\lceil (\deg h + 1)/n \rceil\) chunks
+$h_0, h_1, \dots$ of degree $< n$, with
+$h(X) = \sum_i X^{n i}\, h_i(X)$, and commits to each chunk separately;
+the verifier recombines the chunk evaluations at the evaluation point.
+The prover's FFTs correspondingly run over an \emph{extended} domain
+whose size accommodates $\deg C$, a small multiple of $n$.
 
 \paragraph{Phase 5 --- evaluation challenge $x$.}
 The verifier returns $x \in \F$. The prover evaluates every committed
@@ -856,12 +870,30 @@ evaluations bind to the commitments, which is the role of phases 6--7;
 a prover who sent inconsistent evaluations would pass this field identity
 but fail the opening argument.
 
-\paragraph{Phase 6 --- batched polynomial opening.}
-To verify the evaluations are consistent with the commitments, the prover
-runs Halo 2's multipoint-opening argument: it groups the polynomials queried at the
-same point set and combines them via a challenge $x_1$, then builds a
-single polynomial $f^*(X)$ representing all openings such that
-opening $f^*$ at one final point $x_3$ implies all original openings.
+\paragraph{Phase 6 --- multipoint opening.}
+The claimed evaluations must now be bound to the commitments, and Halo 2
+reduces all the required openings to a single IPA opening. The committed
+polynomials are grouped by their set of query points: most are queried at
+$\{x\}$ alone, while the running products are also queried at $\omega x$
+(and $A'$ at $\omega^{-1} x$), so only a handful of distinct point sets
+arise. Within each group, a challenge $x_1$ folds the polynomials into a
+single combination $q_i(X)$ by powers of $x_1$. For each group, both
+parties interpolate the low-degree polynomial $r_i(X)$ that agrees with
+the claimed evaluations on the group's point set; the quotient
+$f_i(X) := \bigl(q_i(X) - r_i(X)\bigr) / \prod_{z}(X - z)$, with $z$
+ranging over the group's points, is a polynomial precisely when the
+claimed evaluations are correct. The prover combines the $f_i$ by powers
+of a second challenge $x_2$ into $f(X)$ and commits to it. The verifier
+returns a fresh evaluation point $x_3$, and the prover sends the
+evaluation of each $q_i$ at $x_3$; the verifier reconstructs the expected
+value of $f(x_3)$ from the $q_i(x_3)$, the $r_i(x_3)$, and the vanishing
+factors --- if each $f_i$ is a genuine polynomial this value matches the
+committed $f$, and by Schwartz--Zippel a match at random $x_3$ convinces
+the verifier that every claimed evaluation was correct. A final challenge
+$x_4$ folds $f$ and the $q_i$ into one polynomial $f^*(X)$, whose
+expected evaluation at $x_3$ the verifier assembles from the same data;
+a single opening of $f^*$ at $x_3$ then discharges every original
+opening at once.
 
 \paragraph{Phase 7 --- IPA opening.}
 Prover and verifier execute the recursive halving IPA
@@ -876,14 +908,45 @@ phase 7 into an accumulator and folds it with prior
 accumulators (\S\ref{sec:halo-acc}).
 A single decider at the very end validates the entire chain.
 
+\paragraph{The concrete transcript.}
+The deployed implementation instantiates Fiat--Shamir with a transcript
+built on the BLAKE2b hash function. Every prover message ---
+commitments as curve points, claimed evaluations as field elements --- is
+absorbed into the hash state in the order the protocol fixes, and each
+verifier challenge is squeezed from the state at its prescribed point,
+after everything it must depend on has been absorbed. Both parties also
+absorb the data they share in advance --- the $\mathsf{vk}$ digest and
+the unblinded instance commitments --- which therefore never appear in
+the proof. The proof \emph{is} the ordered sequence of the prover's
+messages; the verifier replays the absorptions and recomputes every
+challenge.
+
 \paragraph{Costs.}
-Per proof, ignoring the deferred MSM: $O(\log n)$ pairs checked in
-phase 7; one gate-equation field check; a constant number of polynomial
-evaluations consumed. Without accumulation, the verifier additionally
-performs one $O(n)$-size MSM; with accumulation the chain pays for this MSM once at
-the end. FFTs and one $O(n)$ MSM dominate the prover's work
-(typical Orchard Action: $n = 2^{11}$, a few seconds on commodity
-hardware).
+The prover's work is dominated by FFTs over the extended domain and by
+one $O(n)$-size MSM \emph{per committed polynomial} --- several tens in
+all: each advice column, the permuted lookup columns, the running
+products, the quotient chunks, and the multipoint polynomial $f$
+(typical Orchard Action circuit: $n = 2^{11}$, a few seconds on commodity
+hardware). The verifier performs $O(\log n)$ field and group operations
+per proof --- recomputing the challenges, the gate-equation field check,
+the $\log n$ rounds of phase 7 --- plus the single deferred $O(n)$ MSM,
+amortised over a batch as in \S\ref{sec:halo-acc}.
+
+\paragraph{Proof size.}
+Two kinds of data make up a proof. The IPA of phase 7 contributes
+$2 \log_2 n$ group elements (the pairs $(L_j, R_j)$) plus the final
+scalars --- for Orchard's $n = 2^{11}$, twenty-two points; this is the
+only part that scales with $n$, and only logarithmically. Everything
+else scales with the \emph{circuit structure}, independently of $n$: one
+commitment per advice column, two permuted-column commitments and one
+running product per lookup, the permutation-product and quotient-chunk
+commitments, the multipoint commitment, and one field element per claimed
+evaluation. Each Pasta point or field element serialises to 32 bytes.
+For the Orchard Action circuit the total is fixed by consensus (ZIP 225):
+a bundle's proof occupies $2720 + 2272 \cdot a$ bytes for $a$ Actions ---
+just under 5\,kB for a single-Action bundle --- the per-Action term
+covering the per-circuit commitments and evaluations, the constant term
+the shared quotient, multipoint, and IPA data.
 
 
 \subsection{Instance columns and binding the public statement}\label{sec:instance}
@@ -906,33 +969,42 @@ other column it is interpolated over $H$ in the Lagrange basis,
 \]
 where $\ell_j(\omega^j) = 1$ and $\ell_j(\omega^{j'}) = 0$ otherwise
 (\S\ref{sec:plonkish}). The prover writes the public values into a handful of
-designated rows; all remaining $\pi_j$ are $0$. A custom gate of the form
-$q(X)\bigl(a(X) - \pi(X)\bigr) = 0$, with $q$ a selector active exactly on
-those rows, copies an advice cell to a public value and thereby asserts
-``advice cell $= \pi_j$.'' In Orchard, the gate constrains the cells carrying the in-circuit
-$\nfsym$, $\cvsym^{\mathsf{net}}$, $\rk$ and the flags
-against the instance column this way, so a satisfying assignment exists
-\emph{only} for the public values the verifier supplied.
+designated rows; all remaining $\pi_j$ are $0$.
+
+\paragraph{Binding by copy constraints.}
+Orchard binds the public values through the permutation argument of
+\S\ref{sec:perm}: the instance column participates in the permutation
+$\sigma$, and the circuit equality-constrains each instance cell to the
+advice cell carrying the corresponding in-circuit value (halo2's
+\texttt{constrain\_instance}). A satisfying assignment therefore exists
+\emph{only} when the advice cells holding $\nfsym$,
+$\cvsym^{\mathsf{net}}$, $\rk$, and the flags equal the public values the
+verifier supplied. (An alternative design binds public inputs with a
+dedicated gate $q(X)\bigl(a(X) - \pi(X)\bigr) = 0$, where the selector
+$q$ is active exactly on the designated rows; Orchard does not use it ---
+the copy constraint reuses the existing permutation machinery at no extra
+gate degree.)
 
 \paragraph{Where it enters the protocol.}
-Unlike advice, the prover never commits to $\pi(X)$ and never includes it
-among the IPA openings of phases~6--7: the verifier already holds
-$\vec{\pi}$, so committing would be redundant and would disclose nothing. The
-instance polynomial enters only the \emph{gate equation}. When the
-verifier checks $C(x) = h(x)\,Z_H(x)$ at the evaluation challenge $x$
-(Phase~5, \S\ref{sec:halo2-full}), the assembled $C(x)$ contains the term
-$q(x)\bigl(a(x) - \pi(x)\bigr)$ from the gate above. The advice evaluation
-$a(x)$ arrives in the transcript and the opening argument binds it to its commitment; the
-selector evaluation $q(x)$ is a fixed-column value
-both parties recompute. The verifier supplies the remaining evaluation
-$\pi(x)$ itself, computing $\pi(x) = \sum_j \pi_j\, \ell_j(x)$ directly
-from the known public values --- an $O(\log n)$ evaluation using the
-barycentric form of the Lagrange basis on $H$, never read from the proof.
+The verifier never takes $\pi(X)$ on trust from the prover. In the
+deployed IPA backend, \emph{both} parties compute the commitment to each
+instance polynomial --- unblinded, since the values are public, so the
+two computations agree --- and absorb it into the transcript before the
+first challenge (Phase~1, \S\ref{sec:halo2-full}); every Fiat--Shamir
+challenge thereby depends on the public input. Thereafter the instance
+column is treated like any other: its claimed evaluation $\pi(x)$ appears
+among the Phase~5 evaluations, enters the gate equation and the
+permutation expressions, and the multipoint opening of Phase~6 binds it
+to the instance commitment. Because the verifier computed that commitment
+itself, from the instance values it intends to verify against, the prover
+has no freedom over $\pi$: an evaluation inconsistent with the verifier's
+own values fails the opening argument.
 
 \paragraph{Consequence.}
-A prover who substitutes different public values $\vec{\pi}\,'$ must still
-satisfy $C(x) = h(x)\,Z_H(x)$ for the $\pi(x)$ the \emph{verifier}
-computes from the genuine $\vec{\pi}$. Knowledge soundness
+A prover who targets different public values $\vec{\pi}\,'$ must open
+against the instance commitment the \emph{verifier} computes from the
+genuine $\vec{\pi}$, and must satisfy the copy constraints against those
+values. Knowledge soundness
 (\S\ref{sec:ks}) then extracts a witness for the relation instantiated at
 exactly those public values; no witness exists for the wrong ones except
 with negligible probability. This binds the proof to its public
@@ -974,7 +1046,9 @@ verifier will open any single column. Its \(n\) evaluations pin down a degree-\(
 so with enough independent random values planted on the
 blinding rows the handful the verifier actually queries are jointly uniform and
 independent of the circuit data. The prover blinds the permutation and lookup running products and
-the quotient pieces the same way.
+the quotient pieces the same way; Remark~\ref{rem:active-rows} describes
+how the constraint system exempts the blinding rows, so the random values
+never violate an argument.
 
 \paragraph{Why the openings leak nothing.} In each phase the verifier sees only
 (i) hiding commitments --- uniform group elements --- and (ii) a bounded number of
