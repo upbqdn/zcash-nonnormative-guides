@@ -1,0 +1,20 @@
+# LaTeX / Tectonic build artifacts (PDFs are committed deliberately)
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.nav
+*.snm
+*.vrb
+*.idx
+*.ilg
+*.ind
+*.run.xml
+*.bcf

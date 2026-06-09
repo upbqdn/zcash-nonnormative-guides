@@ -1,0 +1,56 @@
+#+TITLE: Non-Normative Zcash Guide Materials
+#+AUTHOR: m@rek.onl
+#+OPTIONS: toc:nil num:nil
+
+A four-part, layered monograph on the cryptography of [[https://z.cash/][Zcash]]
+Orchard. Each guide assumes the ones before it and builds toward a precise,
+self-contained account of the Orchard protocol and the Halo 2 proving system it
+relies on.
+
+These materials are *non-normative*: they explain and motivate the
+constructions, but the [[https://zips.z.cash/protocol/protocol.pdf][Zcash
+protocol specification]] remains the sole authority. Where this text and the
+specification disagree, the specification is correct.
+
+* The guides
+
+Read in order; each assumes the previous.
+
+1. *Math Guide* (=math-guide.tex=) — the algebraic and number-theoretic
+   groundwork: groups, finite fields, elliptic curves, pairings, and the
+   relevant hardness assumptions.
+2. *Crypto Guide* (=crypto-guide.tex=) — commitments, hashes, signatures,
+   zero-knowledge, and the DLP/CDH/DDH hierarchy, developed only as far as
+   Orchard and Halo 2 require.
+3. *Halo 2 Guide* (=halo2-guide.tex=) — PLONKish arithmetisation, the
+   permutation, lookup, and vanishing arguments, the inner-product polynomial
+   commitment, and the Halo accumulation trick.
+4. *Orchard Guide* (=orchard-guide.tex=) — notes, commitments, nullifiers, the
+   commitment tree, the key hierarchy, the Action statement, and the Orchard
+   circuit.
+
+Compiled PDFs are committed alongside the sources.
+
+* Scope
+
+The material includes only what lies on the critical path to understanding
+Halo 2 and Orchard; off-path generality is deliberately pruned. Everything that
+does lie on that path is explained in full.
+
+* Building
+
+Each guide compiles independently with [[https://tectonic-typesetting.github.io/][Tectonic]]:
+
+#+begin_src sh
+tectonic -Z shell-escape math-guide.tex
+tectonic -Z shell-escape crypto-guide.tex
+tectonic -Z shell-escape halo2-guide.tex
+tectonic -Z shell-escape orchard-guide.tex
+#+end_src
+
+The =-Z shell-escape= flag is required.
+
+* License
+
+Unless noted otherwise, the prose and figures are the author's work, provided
+as-is for educational use.
