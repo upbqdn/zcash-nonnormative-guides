@@ -168,6 +168,8 @@ which the protocol derives addresses, commitments, and nullifiers.
 commitment tree (\S\ref{sec:tree}), nullifiers (\S\ref{sec:nullifier}), and
 value commitments (\S\ref{sec:value}); together with \emph{RedPallas}
 (\S\ref{sec:redpallas}), the signature that authorises a spend.
+\item \textbf{Transmission} (\S\ref{sec:noteenc}): how the sender delivers
+the new note in-band and the recipient detects it.
 \item \textbf{Assembly} (\S\ref{sec:orchard-walkthrough}): a complete Alice-to-Bob
 payment, end to end.
 \item \textbf{The Action statement} (\S\ref{sec:action-stmt}): the formal
@@ -241,6 +243,8 @@ cannot be transported to another). The strings are part of the protocol
 specification; the ones relevant here are
 \[
 \begin{array}{ll}
+\mathtt{z.cash:Orchard} & \text{fixed generators } G^{\mathsf{SpendAuth}}, G^{\mathsf{nf}} \text{ (\S\ref{sec:orchard-keys}, \S\ref{sec:nullifier}),}\\
+\mathtt{z.cash:Orchard\text{-}gd} & \text{the diversified base } \gd \text{ (\S\ref{sec:orchard-keys}),}\\
 \mathtt{z.cash:Orchard\text{-}NoteCommit} & \text{note commitments (\S\ref{sec:notes}),}\\
 \mathtt{z.cash:Orchard\text{-}CommitIvk} & \text{the } \ivk \text{ commitment (\S\ref{sec:orchard-keys}),}\\
 \mathtt{z.cash:Orchard\text{-}MerkleCRH} & \text{the Merkle-tree node hash (\S\ref{sec:tree}),}\\
@@ -535,7 +539,7 @@ arithmetisation-friendliness is irrelevant here.
   spine/.style={->, semithick, black!72, rounded corners=4pt},
   fork/.style={->, semithick, black!50, rounded corners=5pt},
   keyedge/.style={->, semithick, dash pattern=on 2.2pt off 1.6pt, black!55, rounded corners=5pt},
-  op/.style={font=\footnotesize, text=black!65, anchor=west, align=left, text width=52mm},
+  op/.style={font=\footnotesize, text=black!65, anchor=west, align=left, text width=57mm},
   note/.style={font=\scriptsize, text=black!55},
   tlab/.style={font=\footnotesize\bfseries, rotate=90, fill=white, inner sep=1.5pt},
   tlabh/.style={font=\footnotesize\bfseries, fill=white, inner sep=1.5pt},
@@ -596,7 +600,7 @@ arithmetisation-friendliness is irrelevant here.
 \node[op] at (\gx,-7.8)  {$\ivk := \CommitIvk_{\rivk}(\Extract(\aksym),\nksym)$};
 \node[op] at (\gx,-9.4)  {$(\dk,\ovk) := $ the two halves of\\[1pt]
                           $\mathsf{PRFexpand}_{\rivk}(\mathtt{0x82}\,\|\,\aksym\,\|\,\nksym)$};
-\node[op] at (\gx,-10.6) {$\gd := \GroupHash^{\Pallas}(\mathtt{Orchard\text{-}gd},d)$,\\[1pt]
+\node[op] at (\gx,-10.6) {$\gd := \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}gd},d)$,\\[1pt]
                           $\pkd := [\ivk]\,\gd$;\\[1pt]
                           $d := \mathsf{FF1\text{-}AES256}_{\dk}(d_{\mathrm{plain}})$};
 
@@ -632,8 +636,10 @@ it generates diversified addresses. Concretely $d$ is the format-preserving
 encryption $\mathsf{FF1\text{-}AES256}$ of a chosen index $d_{\mathrm{plain}}$
 under the key $\dk$ (the dashed edge marks $\dk$ entering as the cipher key),
 and $\pkd=[\ivk]\,\gd$, so the address binds both keys.
-\emph{Every node is secret key material (shaded) except the
-diversified address (unshaded), the only value the protocol ever publishes} ---
+\emph{Every node is secret key material except the chosen index
+$d_{\mathrm{plain}}$, the diversifier $d$, and the diversified address
+(unshaded) --- the address $(d,\pkd)$, and with it $d$, is the only value
+the protocol ever publishes} (shading marks tier membership, not secrecy) ---
 in particular the viewing keys $\fvk$, $\ivk$, $\ovk$ are \emph{secret:}
 ``viewing''
 names what they let the holder do, not that the protocol publishes them. Each dashed
@@ -770,7 +776,7 @@ fixed depth $32$ (so up to $2^{32}$ notes). Leaves are $\cmx$ values in
 creation order. The parent of a left child $\ell$ and right child $r$ at
 layer $\ell'$ is
 \[
-\mathsf{MerkleCRH}^{\mathsf{Orchard}}_{\ell'}(\ell, r) := \mathsf{ShortHash}_{\mathtt{Orchard\text{-}MerkleCRH}}(\mathrm{LE}_{10}(\ell') \,\|\, \ell \,\|\, r) \;\in\; \F_{p_{\Pallas}},
+\mathsf{MerkleCRH}^{\mathsf{Orchard}}_{\ell'}(\ell, r) := \mathsf{ShortHash}_{\mathtt{z.cash:Orchard\text{-}MerkleCRH}}(\mathrm{LE}_{10}(\ell') \,\|\, \ell \,\|\, r) \;\in\; \F_{p_{\Pallas}},
 \]
 a layer-tagged Sinsemilla short hash (Definition~\ref{def:sinsemilla-commit};
 leaves $\cmx$, internal nodes, and the root all live in $\F_{p_{\Pallas}}$).
@@ -982,7 +988,7 @@ distribution}: every Action carries, beside its commitment, a ciphertext only
 the recipient can open.
 
 \paragraph{Encryption (sender side).} Alice holds Bob's address $(d, \pkd)$,
-with $\pkd = [\ivk]\,\gd$ and $\gd = \GroupHash^{\Pallas}(\mathtt{Orchard\text{-}gd}, d)$
+with $\pkd = [\ivk]\,\gd$ and $\gd = \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}gd}, d)$
 (\S\ref{sec:orchard-keys}). She forms the \emph{note plaintext}
 $\mathsf{np} = (\mathtt{0x02}, d, v, \mathsf{rseed}, \mathsf{memo})$, where the
 $32$-byte $\mathsf{rseed}$ is the master randomness from which she derives the note's $\rcm$,
@@ -1024,7 +1030,7 @@ makes an incorrect guess fail cleanly (it returns $\bot$), so a successful open
 \emph{is} the detection that the note was his. He then re-derives the full note
 from $(d, v, \mathsf{rseed})$ --- taking $\rho := \nfsym_{\mathrm{old}}$ from the
 same Action --- and performs the two checks that close the obvious forgeries:
-(i)~that he formed the ephemeral key honestly, $[\mathsf{esk}]\gd = \mathsf{epk}$
+(i)~that the sender formed the ephemeral key honestly, $[\mathsf{esk}]\gd = \mathsf{epk}$
 for the $\mathsf{esk}$ re-derived from $\mathsf{rseed}$ (the ZIP-212 check,
 defeating a mauled $\mathsf{epk}$); and (ii)~that the note is indeed the one
 the Action committed on chain, $\Extract\big(\NoteCommit_{\rcm}(\ldots)\big) = \cmx$. Only
@@ -1038,7 +1044,11 @@ a light wallet does so against \emph{compact} blocks, which carry only the
 first $52$ bytes of $C_{\mathrm{enc}}$ --- those covering the compact note
 plaintext: the lead byte $\mathtt{0x02}$ ($1$ byte), $d$ ($11$ bytes), $v$
 ($8$ bytes), and $\mathsf{rseed}$ ($32$ bytes) --- together with
-$\mathsf{epk}$ and $\cmx$. The wallet records each note that opens \emph{with its leaf
+$\mathsf{epk}$, $\cmx$, and the Action's nullifier $\nfsym$, which the
+light wallet needs twice: it supplies $\rho := \nfsym_{\mathrm{old}}$ for
+the $\cmx$ recomputation that detects the note, and it is the source of
+the chain's nullifier set against which spentness is checked below. The
+wallet records each note that opens \emph{with its leaf
 position} --- the index at which it appended its $\cmx$, read directly off the
 block --- and that position is precisely what the commitment tree of
 \S\ref{sec:tree} consumes: the wallet \emph{marks} the position in its shard
@@ -1066,8 +1076,11 @@ Each Action commits to its own value change with a Pedersen commitment
 \]
 where $v_{\mathrm{old}}$ is the spent value, $v_{\mathrm{new}}$ the created
 value, $\rcv \in \F_{p_{\Vesta}}$ the commitment randomness (a Pallas
-scalar), and $V^{\mathsf{Orchard}}, R^{\mathsf{Orchard}} \in
-\Ep(\F_{p_{\Pallas}})$ are independent Pallas generators.
+scalar), and
+$V^{\mathsf{Orchard}} := \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}cv}, \texttt{"v"})$,
+$R^{\mathsf{Orchard}} := \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}cv}, \texttt{"r"})
+\in \Ep(\F_{p_{\Pallas}})$ are nothing-up-my-sleeve points
+(\S\ref{sec:prelim-curve}), hence independent Pallas generators.
 \end{definition}
 
 We now apply the homomorphism. Summing over the $m$ Actions in a transaction,
@@ -1152,12 +1165,12 @@ $(\mathsf{anchor}, \cvsym^{\mathsf{net}}, \nfsym_{\mathrm{old}}, \rk,
 \cmx_{\mathrm{new}})$ and her note, keys, path, and randomness as private
 witness. The proof attests, in one shot and revealing nothing: the old note
 is in the tree (A3), its nullifier follows correctly (A5), she is
-authorised to spend it (A6, A7), the new note is well-formed (A1, A2), and
+authorised to spend it (A6, A7), the spent and created notes are well-formed (A1, A2), and
 the value commitment is consistent (A4).
 
 \paragraph{4. Alice assembles and signs the transaction.} She encrypts
 $\mathbf{n}_{\mathrm{new}}$ to Bob (so that only Bob, via his $\ivk$, can detect
-and open it), attaches a SpendAuthSig under $\rk$, and signs the whole
+and open it; \S\ref{sec:noteenc}), attaches a SpendAuthSig under $\rk$, and signs the whole
 bundle with the binding signature under $\mathsf{bvk}$ (\S\ref{sec:value}),
 which proves balance; both signatures sign the ZIP-244 transaction sighash,
 welding the Action into this transaction.
@@ -1170,7 +1183,7 @@ $\mathsf{bvk}$ (balance). If all pass, it adds $\nfsym_{\mathrm{old}}$ to the
 nullifier set and appends $\cmx_{\mathrm{new}}$ as a new tree leaf.
 
 \paragraph{6. Bob receives.} Scanning with his $\ivk$, Bob trial-decrypts
-the ciphertext, recovers $\mathbf{n}_{\mathrm{new}}$, and now owns a $5$-ZEC
+the ciphertext (\S\ref{sec:noteenc}), recovers $\mathbf{n}_{\mathrm{new}}$, and now owns a $5$-ZEC
 note he can later spend by repeating the entire procedure. The chain has gained
 one nullifier and one commitment; an observer learns that \emph{an} Orchard
 payment occurred and nothing else --- not sender, recipient, or amount.
@@ -1353,15 +1366,19 @@ in-circuit; its output feeds the ECC gadget for A5.
 \paragraph{Decomposition, range, and boolean gadgets.} Lookup-based gadgets
 split field elements into the bit-chunks the other gadgets consume and
 range-check values: that $v_{\mathrm{old}}, v_{\mathrm{new}} \in [0, 2^{64})$ and
-$\mathrm{sign} \in \{-1,+1\}$ (A4), that point and field encodings are canonical,
-and that the selectors $\mathsf{enableSpends}, \mathsf{enableOutputs}$ are boolean
-(A8, A9).
+$\mathrm{sign} \in \{-1,+1\}$ (A4), and that point and field encodings are
+canonical. (The flags $\mathsf{enableSpends}$, $\mathsf{enableOutputs}$ are
+verifier-supplied public inputs --- ZIP-225's $\mathsf{flagsOrchard}$ byte
+fixes them to bits outside the circuit --- and enter the circuit only
+through the plain-gate products of A8--A9.)
 
 \paragraph{Structure of the proof.} These gadgets compose into a single fixed
 circuit whose native field is the Pallas base field $\F_{p_{\Pallas}}$ --- the
 field in which Pallas coordinates reside, so that the ECC gadget runs natively ---
 proved with the Halo~2 inner-product argument over the Pasta cycle. The
-circuit uses $k = 11$, i.e.\ $2^{11} = 2048$ rows, with ten advice columns
+circuit uses $2^{11} = 2048$ rows (the \emph{Halo~2 Guide}'s circuit-size
+exponent $k = 11$ --- not to be confused with Sinsemilla's chunk width
+$k = 10$, Construction~\ref{const:sinsemilla}), with ten advice columns
 beside the fixed columns and the Sinsemilla lookup table (the
 \emph{Halo~2 Guide}). Every Action,
 whatever it spends or creates, is one instance of this same circuit; a
@@ -1438,8 +1455,8 @@ Poseidon outputs as random scalars under the PRF assumption).
 \begin{proof}[Sketch]
 A collision $\nfsym(\mathbf{n}) = \nfsym(\mathbf{n}')$ in $x$-coordinate
 gives
-$[F_{\nksym}(\rho) + \psi] G + \cmsym = \pm([F_{\nksym}(\rho') + \psi'] G + \cmsym')$,
-a non-trivial linear relation among $G, \cmsym, \cmsym'$. Since
+$[F_{\nksym}(\rho) + \psi] G^{\mathsf{nf}} + \cmsym = \pm([F_{\nksym}(\rho') + \psi'] G^{\mathsf{nf}} + \cmsym')$,
+a non-trivial linear relation among $G^{\mathsf{nf}}, \cmsym, \cmsym'$. Since
 $\cmsym, \cmsym'$ are themselves Pedersen-style commitments to distinct
 notes with hidden trapdoors, finding such a relation reduces to DL on
 Pallas.
@@ -1462,8 +1479,8 @@ solver for $\aksym$.
 \end{proposition}
 
 \begin{proof}[Sketch]
-The standard Pointcheval--Stern forking argument
-(the \emph{Crypto Guide}) reduces a Schnorr forger to a DL adversary, and
+The standard forking argument (the \emph{Crypto Guide}, via the
+Bellare--Neven general forking lemma) reduces a Schnorr forger to a DL adversary, and
 it covers re-randomisation because RedPallas is key-prefixed: the
 challenge $H^*(R \,\|\, \rk \,\|\, m)$ hashes the verification key, so
 response-shifting cannot transport signatures between keys. The reduction
@@ -1512,12 +1529,16 @@ By A4 and knowledge soundness, each $\cvsym^{\mathsf{net}, i}$ commits
 to the true per-Action delta $v_{\mathrm{old}, i} - v_{\mathrm{new}, i}$.
 The bundle sum $\sum_i \cvsym^{\mathsf{net}, i}$ equals $[\sum_i (v_{\mathrm{old}, i} - v_{\mathrm{new}, i})] V^{\mathsf{Orchard}} + [\sum_i \rcv_i] R^{\mathsf{Orchard}}$
 by homomorphism. Consensus computes $\mathsf{bvk}$ and checks the
-binding signature; by unforgeability (Proposition~\ref{prop:redpallas}),
-a valid binding signature implies the verifier-side $\mathsf{bvk}$
-equals $[\mathsf{bsk}] R^{\mathsf{Orchard}}$ for some known $\mathsf{bsk}$
---- which forces the value-component to equal
-$[v_{\mathrm{balance}}] V^{\mathsf{Orchard}}$, hence the total value flow
-matches the declared transparent balance.
+binding signature; a valid binding signature is a Fiat--Shamir proof of
+knowledge of $\log_{R^{\mathsf{Orchard}}} \mathsf{bvk}$, so the forking
+extraction in the proof of Proposition~\ref{prop:redpallas} recovers
+$\mathsf{bsk}$ with $\mathsf{bvk} = [\mathsf{bsk}]\, R^{\mathsf{Orchard}}$;
+combined with the openings extracted via A4, a non-zero
+$V^{\mathsf{Orchard}}$-component of $\mathsf{bvk}$ would yield a
+discrete-log relation between the independent bases $V^{\mathsf{Orchard}}$
+and $R^{\mathsf{Orchard}}$, contradicting DL --- hence the value-component
+equals $[v_{\mathrm{balance}}] V^{\mathsf{Orchard}}$ and the total value
+flow matches the declared transparent balance.
 \end{proof}
 
 This is the fundamental conservation property: shielded transactions
@@ -1530,8 +1551,9 @@ Halo 2 is statistical zero knowledge in the random-oracle model
 $x := (\mathsf{anchor}, \cvsym^{\mathsf{net}}, \nfsym_{\mathrm{old}}, \rk, \cmx, \ldots)$
 operates as follows:
 \begin{enumerate}[leftmargin=*]
-\item Sample the Fiat--Shamir challenges $\theta, \beta, \gamma, y, x, x_1, x_2, x_3$
-and the IPA challenges $u_1, \dots, u_k$ uniformly, programming the
+\item Sample the Fiat--Shamir challenges $\theta, \beta, \gamma, y, x, x_1, x_2, x_3, x_4$
+and the IPA challenges $u_1, \dots, u_{k}$ ($k = 11$ rounds, the
+circuit-size exponent) uniformly, programming the
 random oracle to return these on the relevant transcript prefixes.
 \item Sample the final IPA scalar $a$ uniformly.
 \item Use the freedom in the blinding terms $\ell_j, r_j$ (added at each
@@ -1553,8 +1575,10 @@ The full SNARK soundness composes three ingredients:
 \item \emph{PIOP soundness.} Schwartz--Zippel error per polynomial-identity
 check, summed across constraints. For $\F = \F_{p_{\Pallas}}$ with
 $|\F| \approx 2^{254}$ and constraint degree $\le d_{\max}$, the error
-per check is $\le d_{\max} / |\F| \approx d_{\max} \cdot 2^{-254}$,
-overwhelmingly small.
+per check is $\le d_{\max}\, n / |\F| \approx d_{\max} \cdot 2^{-243}$
+(the gate polynomial composes degree-$d_{\max}$ gates with column
+polynomials of degree $n-1$, $n = 2^{11}$; a cheating prover's recombined
+quotient $h \cdot Z_H$ has degree $< d_{\max} n$), overwhelmingly small.
 \item \emph{PCS extractability.} Reduces to DL on the IPA curve
 (the \emph{Halo 2 Guide}), with the accumulation analysis
 (the \emph{Halo 2 Guide}) preserving soundness across recursion.
@@ -1570,7 +1594,11 @@ is itself negligible. Combined with the application-level reductions
 gives:
 
 \begin{theorem}[Orchard end-to-end security, informal]\label{thm:orchard-e2e}
-Under DL on Pallas in the random-oracle model, no efficient adversary
+Under DL on both Pasta curves (Pallas for the application-level
+primitives, Vesta for the IPA commitment) in the random-oracle model ---
+and, for property (iv), additionally DDH on Pallas, the PRF security of
+Poseidon (\S\ref{sec:nullifier}), and the KDF/AEAD securing the note
+ciphertext (\S\ref{sec:noteenc}) --- no efficient adversary
 can (i) produce an accepted Action whose public inputs do not correspond
 to a real spent note, (ii) cause two Actions to share a nullifier
 without spending the same note twice, (iii) cause a bundle's value flow
@@ -1581,13 +1609,19 @@ inputs.
 
 The four properties are, respectively, soundness of the Action SNARK,
 nullifier uniqueness, balance preservation, and zero knowledge. The first
-three reduce (informally) to DL on Pallas in the ROM; the fourth
-(privacy) is stronger --- it holds \emph{statistically} given the
-perfectly-hiding Pedersen and Sinsemilla blinders and the random-oracle
-programming, so it does not rest on the DL assumption at all. This
-asymmetry is typical of the discrete-log SNARK family: soundness is
-computational (a cheating prover is only \emph{bounded}, not impossible),
-whereas zero knowledge is information-theoretic.
+three reduce (informally) to DL on the Pasta curves in the ROM (Pallas
+for the application-level reductions, Vesta for the IPA extraction). For
+the fourth (privacy), the zero knowledge of the SNARK transcript is
+statistical --- given the perfectly-hiding Pedersen and Sinsemilla
+blinders and the random-oracle programming, it does not rest on DL ---
+but full unlinkability of an Action additionally rests on the DDH
+assumption on Pallas and the PRF security of Poseidon
+(\S\ref{sec:nullifier}) and on the KDF/AEAD securing the note ciphertext
+(\S\ref{sec:noteenc}), and is therefore computational. The asymmetry
+within the proof itself is typical of the discrete-log SNARK family:
+soundness is computational (a cheating prover is only \emph{bounded},
+not impossible), whereas the zero knowledge of the transcript is
+information-theoretic.
 
 \section{The Zcash proof-system landscape}\label{sec:zcash}
 
