@@ -86,7 +86,7 @@
 \maketitle
 \thispagestyle{empty}
 \begin{abstract}
-This is the fourth and final volume of a four-part series --- \emph{Math Guide}, \emph{Crypto Guide}, \emph{Halo~2 Guide}, \emph{Orchard Guide}. Assuming the three companion volumes, it develops Zcash's Orchard shielded-payment protocol: the key hierarchy, notes and note commitments, the commitment tree and the procedure by which a wallet obtains a membership path, nullifiers, note encryption and trial decryption, value commitments and the RedPallas signature, the formal Action statement the SNARK proves, and the end-to-end security reductions that convert knowledge soundness into balance, nullifier uniqueness, and zero knowledge --- closing with the Zcash proof-system lineage.
+This is the fourth and final volume of a four-part series --- \emph{Math Guide}, \emph{Crypto Guide}, \emph{Halo~2 Guide}, \emph{Orchard Guide}. Assuming the three companion volumes, it develops Zcash's Orchard shielded-payment protocol: the key hierarchy, notes and note commitments, the commitment tree and the procedure by which a wallet obtains a membership path, nullifiers, note encryption and trial decryption, value commitments and the RedPallas signature, the formal Action statement the SNARK proves, and the end-to-end security analysis that derives balance and nullifier uniqueness from knowledge soundness, and privacy from zero knowledge --- closing with the Zcash proof-system lineage.
 \end{abstract}
 \clearpage
 \tableofcontents
@@ -665,11 +665,21 @@ and neither confers the ability to spend.
 
 Two questions of motivation that the bare formulas do not answer. \emph{Why is $\ivk$
 a commitment, $\ShortCommit_{\rivk}(\Extract(\aksym), \nksym)$, rather than a plain
-hash?} Because $\ivk$ must bind \emph{both} $\aksym$ (spend authority) and
-$\nksym$ (nullifier derivation) to one identity: a commitment lets the
-in-circuit spender prove $\pkd = [\ivk]\gd$ \emph{and} that the same $\ivk$
-ties to the $\aksym$ and $\nksym$ used elsewhere in the same proof (checks
-A5--A7 below), which a one-way hash would not permit it to open algebraically.
+hash?} Because $\ivk$ must both bind \emph{and} hide. It binds $\aksym$
+(spend authority) and $\nksym$ (nullifier derivation) to one identity, and
+check A7 below proves the linkage in-circuit by recomputing the commitment
+from the witnessed $\aksym$, $\nksym$, $\rivk$ --- but binding alone a
+collision-resistant hash would supply equally, and in-circuit recomputation
+works for any hash (check A3 recomputes the unblinded Sinsemilla
+$\mathsf{MerkleCRH}$; Sapling even proved its BLAKE2s-based
+$\mathsf{CRH}^{\mathsf{ivk}}$ in-circuit). What the trapdoor $\rivk$ adds is
+\emph{hiding}: the blinded $\ShortCommit$ is perfectly hiding, so $\ivk$ ---
+and hence every public $\pkd = [\ivk]\gd$ --- reveals nothing about $\aksym$
+and $\nksym$, whereas the unblinded Sinsemilla hash is only
+collision-resistant (Theorem~\ref{thm:sinsemilla-cr}) with no one-wayness
+claim. Hiding is what keeps the IN/OUT tier strictly below FULL VIEW: an
+$\ivk$ holder, such as an always-online wallet server, cannot extract
+$\nksym$ or $\aksym$.
 \emph{Why is $\nksym$ separate from $\ask$?} So that the owner can delegate the
 capability to compute nullifiers (which a viewing key needs to determine which
 of the holder's notes are already spent) \emph{without} conferring the ability to
@@ -779,7 +789,7 @@ The path is \emph{not} something Alice stored or had to track; it is a
 deterministic function of \emph{public} data. The tree's leaves are every
 $\cmx$ ever published, in order, and the path is the sibling at each level
 on the route from her leaf up to the root (Figure~\ref{fig:merklepath}); and
-every one of those siblings is itself a hash of public leaves. Hence anyone holding
+every one of those siblings is either itself a public leaf or a hash of public leaves. Hence anyone holding
 the public commitments can \emph{recompute} any note's path, against any past
 root, at any time. The only secret is \emph{which} leaf is hers, and that
 remains hidden because she proves the path in zero knowledge (check~A3), not
@@ -842,7 +852,7 @@ reveal which note is hers.
 tree has depth $32$). The leaves are the public note commitments $\cmx$, in
 order. To prove her leaf (orange) is in the tree, Alice recomputes the bold
 route up to the root $R$ --- the \emph{anchor} --- folding in, at each level, the
-sibling hash beside it: the \emph{authentication path} $A, L_3, F$ (blue).
+sibling hash beside it: the \emph{authentication path} $L_3, A, F$ (blue).
 Efficiency is the only reason not to hash
 the whole tree: a far subtree enters her path solely through its single root
 (here $F$), so she never downloads its leaves (faded) --- the
@@ -1108,7 +1118,7 @@ revealing $\aksym$.
 \subsection{A single shielded payment, end to end}\label{sec:orchard-walkthrough}
 
 The components now assemble into a transaction. Consider Alice paying Bob $5$
-ZEC from a note worth $5$ ZEC. The unit of shielded transfer is an
+ZEC ($v = 5 \cdot 10^{8}$ zatoshi) from a note worth $5$ ZEC. The unit of shielded transfer is an
 \emph{Action}, which simultaneously spends one old note and creates one new
 note (a deliberately fixed shape that conceals whether a given Action is
 ``really'' a spend, an output, or both). This payment is one Action.
@@ -1123,11 +1133,11 @@ is a leaf of the tree. She:
 \begin{itemize}[leftmargin=*]
 \item computes its nullifier $\nfsym_{\mathrm{old}}$
 (\S\ref{sec:nullifier}) --- she will publish this to retire the note;
-\item constructs Bob's new note $\mathbf{n}_{\mathrm{new}} := (\mathsf{addr}_{\mathrm{Bob}}, 5, \rho_{\mathrm{new}}, \psi_{\mathrm{new}}, \rcm_{\mathrm{new}})$
+\item constructs Bob's new note $\mathbf{n}_{\mathrm{new}} := (\mathsf{addr}_{\mathrm{Bob}}, 5 \cdot 10^{8}, \rho_{\mathrm{new}}, \psi_{\mathrm{new}}, \rcm_{\mathrm{new}})$
 with $\rho_{\mathrm{new}} := \nfsym_{\mathrm{old}}$, and its commitment
 $\cmx_{\mathrm{new}}$ (\S\ref{sec:notes});
 \item forms the value commitment $\cvsym^{\mathsf{net}}$ with
-$v_{\mathrm{old}} - v_{\mathrm{new}} = 5 - 5 = 0$ (\S\ref{sec:value});
+$v_{\mathrm{old}} - v_{\mathrm{new}} = 5 \cdot 10^{8} - 5 \cdot 10^{8} = 0$ (\S\ref{sec:value});
 \item selects a randomiser $\alpha$ and forms $\rk$ (\S\ref{sec:redpallas});
 \item reads off a recent anchor and her note's Merkle path
 (\S\ref{sec:tree}).
@@ -1271,10 +1281,11 @@ builder sets these bundle-level flags; consensus rules constrain them
 (coinbase transactions, for instance, must set $\mathsf{enableSpends} = 0$).
 \end{definition}
 
-Each conjunct is one entry from the four-requirement map of
+Each of A1--A7 is one entry from the four-requirement map of
 \S\ref{sec:orchard-problem}: A1--A2 represent notes, A3 proves membership,
 A5 (with the chain's nullifier set) prevents double-spending, A4 conserves
-value, and A6--A7 authorise the spender. This is the relation
+value, and A6--A7 authorise the spender; A8--A9 stand outside the map as
+consensus-level gating constraints. This is the relation
 $\Rel_{\mathsf{Orchard}}$. Every Action is an instance of it; Halo~2
 produces one aggregate proof \emph{per bundle}, covering all of the
 bundle's Actions, while each Action carries its own SpendAuthSig.
@@ -1378,7 +1389,8 @@ primitives.
 \subsection{Reduction of Sinsemilla collision-resistance to DL on Pallas}\label{sec:sins-cr}
 
 \begin{proposition}[Sinsemilla CR $\Leftarrow$ DL]\label{prop:sins-cr}
-A collision $M \ne M'$ with $\Sinsemilla_D(M) = \Sinsemilla_D(M')$
+A collision $M \ne M'$ between messages of the same chunk count $\ell$
+with $\Sinsemilla_D(M) = \Sinsemilla_D(M')$
 yields a non-trivial DL relation among the generators
 $\{P[0], \dots, P[2^k - 1]\}$.
 \end{proposition}
@@ -1395,7 +1407,13 @@ hash-to-curve modelled as a random oracle samples these independently,
 finding such a relation is the multi-generator discrete-log relation
 problem, and no efficient adversary produces one without solving DL (the
 \emph{Crypto Guide} gives this reduction in its Pedersen-hash collision
-analysis). The incomplete-addition exceptions are themselves
+analysis). For differing chunk counts $\ell \ne \ell'$, the unfolded
+equality instead gives $(2^{\ell} - 2^{\ell'})\,Q + \sum_i \cdots =
+\mathcal{O}$ with $2^{\ell} \not\equiv 2^{\ell'} \pmod{p_{\Vesta}}$ for all
+admissible lengths, i.e.\ a non-trivial DL relation among $\{Q\} \cup
+\{P[0], \dots, P[2^k - 1]\}$; since $Q$ is itself a $\GroupHash$ output
+modelled as an independent random generator, this case reduces to DL
+identically. The incomplete-addition exceptions are themselves
 non-trivial DL relations among the same generators and so also
 negligible.
 \end{proof}
@@ -1433,21 +1451,39 @@ duplicate-nullifier rejection then prevents double-spending.
 
 \begin{proposition}[RedPallas EUF-CMA $\Leftarrow$ DL]\label{prop:redpallas}
 RedPallas is EUF-CMA-secure assuming DL on Pallas in the random-oracle
-model. The re-randomisation extension preserves security: a forger
-against $\rk$ for adversary-chosen $\alpha$ implies a forger against
-plain Schnorr on $\rk$.
+model. The re-randomisation extension preserves security: a forger that,
+given $\aksym$ and signatures under re-randomised keys, produces a valid
+signature under $\rk = \aksym + [\alpha]\, G^{\mathsf{SpendAuth}}$ for an
+$\alpha$ of its own (possibly $\aksym$-dependent) choice yields a DL
+solver for $\aksym$.
 \end{proposition}
 
 \begin{proof}[Sketch]
 The standard Pointcheval--Stern forking argument
-(the \emph{Crypto Guide}) reduces a Schnorr forger
-to a DL adversary. For re-randomisation, the security simulator selects
-$\rsk$ uniformly, sets $\rk := [\rsk] G^{\mathsf{SpendAuth}}$, then
-produces a consistent $(\aksym, \alpha)$ by sampling $\alpha$ at random
-and computing $\aksym := \rk - [\alpha] G^{\mathsf{SpendAuth}}$. The
-adversary's view of $\aksym$ is uniform regardless of $\rsk$, so the
-forging probability against $\rk$ matches that against plain Schnorr
-on a uniform key.
+(the \emph{Crypto Guide}) reduces a Schnorr forger to a DL adversary, and
+it covers re-randomisation because RedPallas is key-prefixed: the
+challenge $H^*(R \,\|\, \rk \,\|\, m)$ hashes the verification key, so
+response-shifting cannot transport signatures between keys. The reduction
+embeds the DL challenge as $\aksym := X$. It answers signing queries under
+any $\rk_i = \aksym + [\alpha_i]\, G^{\mathsf{SpendAuth}}$ without knowing
+any secret, via the honest-verifier zero-knowledge simulator with
+random-oracle programming: sample $c, s$ uniformly, set
+$R := [s]\, G^{\mathsf{SpendAuth}} - [c]\, \rk_i$, and program
+$H^*(R \,\|\, \rk_i \,\|\, m) := c$, aborting on programming collisions
+exactly as in the \emph{Crypto Guide}'s Schnorr EUF-CMA theorem. It then
+forks the adversary at the forgery's critical query
+$H^*(R^* \,\|\, \rk^* \,\|\, m^*)$, obtaining two accepting transcripts
+that share $R^*$ --- and, since both forks share the critical query input,
+the same $\rk^*$, hence the same $\alpha^*$ --- with distinct challenges;
+$2$-special soundness extracts $\rsk^*$, the discrete logarithm of
+$\rk^*$, and the output $\ask = \rsk^* - \alpha^*$, with $\alpha^*$ the
+adversary-supplied randomiser, solves DL for $\aksym$. Separately, and
+only for honest signer-chosen uniform $\alpha$: sampling $\alpha$ at
+random and back-deriving $\aksym := \rk - [\alpha]\, G^{\mathsf{SpendAuth}}$
+reproduces the view of $(\aksym, \alpha, \rk)$ exactly, so honest
+re-randomisations are distributed as plain Schnorr keys --- the
+unlinkability statement of the \emph{Crypto Guide}, which does not by
+itself cover adversary-chosen $\alpha$.
 \end{proof}
 
 A6 (spend authority) plus knowledge soundness ensures the prover knows
@@ -1516,7 +1552,7 @@ check, summed across constraints. For $\F = \F_{p_{\Pallas}}$ with
 $|\F| \approx 2^{254}$ and constraint degree $\le d_{\max}$, the error
 per check is $\le d_{\max} / |\F| \approx d_{\max} \cdot 2^{-254}$,
 overwhelmingly small.
-\item \emph{PCS knowledge-binding.} Reduces to DL on the IPA curve
+\item \emph{PCS extractability.} Reduces to DL on the IPA curve
 (the \emph{Halo 2 Guide}), with the accumulation analysis
 (the \emph{Halo 2 Guide}) preserving soundness across recursion.
 \item \emph{Fiat--Shamir soundness in the ROM.} Loses a polynomial

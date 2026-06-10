@@ -242,7 +242,7 @@ The last nonzero remainder is \(21\), so \(\gcd(1071,462)=21\). Indeed \(1071=21
 \end{example}
 
 \begin{remark}\label{intmod:rem:euclidcomplexity}
-The Euclidean algorithm is efficient. The number of division steps for inputs \(a>b>0\) is \(O(\log b)\); the worst case occurs at consecutive Fibonacci numbers (Lamé's theorem), where each quotient \(q_i\) equals \(1\) and the remainders shrink as slowly as possible. With schoolbook arithmetic on \(k\)-bit inputs the whole computation costs \(O(k^2)\) bit operations. This efficiency is what renders gcd-based cryptographic operations—above all modular inversion, below—practical at the field sizes used in Halo~2 and Orchard.
+The Euclidean algorithm is efficient. The number of division steps for inputs \(a>b>0\) is \(O(\log b)\); the worst case occurs at consecutive Fibonacci numbers (Lamé's theorem), where every quotient \(q_i\) equals \(1\) except the final one (which equals \(2\)) and the remainders shrink as slowly as possible. With schoolbook arithmetic on \(k\)-bit inputs the whole computation costs \(O(k^2)\) bit operations. This efficiency is what renders gcd-based cryptographic operations—above all modular inversion, below—practical at the field sizes used in Halo~2 and Orchard.
 \end{remark}
 
 \subsection{The Bézout identity and the extended Euclidean algorithm}\label{intmod:sub:bezout}
@@ -769,7 +769,7 @@ By minimality of \(m\) and \(0 \le r < m\), it follows that \(r = 0\), so \(g^t 
 
 (2) If \(G\) is infinite, then \(g\) has infinite order, so the subgroups \(\langle g^m\rangle\) (\(m \ge 1\)) are all infinite cyclic, and \(\langle g^0\rangle = \{e\}\). They are distinct because \(\langle g^m\rangle\) has \(g^m\) as its least positive power but does not contain \(g^j\) for \(0<j<m\). Part (1) shows these are all subgroups.
 
-(3) Suppose \(|G| = n\), so \(\ord(g) = n\). Let \(d \mid n\). The element \(g^{n/d}\) has order \(\ord(g^{n/d}) = n/\gcd(n, n/d) = n/(n/d) = d\) by Corollary~\ref{groups:cor-order-power}, so \(\langle g^{n/d}\rangle\) is a subgroup of order \(d\). For uniqueness, let \(H \le G\) with \(|H| = d\). By (1), \(H = \langle g^m\rangle\) for the least positive \(m\) with \(g^m \in H\); and by Lagrange's theorem (proved below, but a direct argument suffices here) \(|H| = \ord(g^m) = n/\gcd(n,m) = d\), so \(\gcd(n,m) = n/d\). Writing \(m = (n/d) m'\), every element of \(H\) is a power of \(g^{n/d}\) raised to a power, hence \(H \subseteq \langle g^{n/d}\rangle\); comparing orders gives \(H = \langle g^{n/d}\rangle\). Thus there is exactly one subgroup of each order \(d \mid n\), and by (1) every subgroup arises this way.
+(3) Suppose \(|G| = n\), so \(\ord(g) = n\). Let \(d \mid n\). The element \(g^{n/d}\) has order \(\ord(g^{n/d}) = n/\gcd(n, n/d) = n/(n/d) = d\) by Corollary~\ref{groups:cor-order-power}, so \(\langle g^{n/d}\rangle\) is a subgroup of order \(d\). For uniqueness, let \(H \le G\) with \(|H| = d\). By (1), \(H = \langle g^m\rangle\) for the least positive \(m\) with \(g^m \in H\); and by Proposition~\ref{groups:prop-cyclic-order} and Corollary~\ref{groups:cor-order-power}, \(|H| = \ord(g^m) = n/\gcd(n,m) = d\), so \(\gcd(n,m) = n/d\). Writing \(m = (n/d) m'\), every element of \(H\) is a power of \(g^{n/d}\) raised to a power, hence \(H \subseteq \langle g^{n/d}\rangle\); comparing orders gives \(H = \langle g^{n/d}\rangle\). Thus there is exactly one subgroup of each order \(d \mid n\), and by (1) every subgroup arises this way.
 \end{proof}
 
 \begin{remark}\label{groups:rem-Zn-subgroups}
@@ -1078,7 +1078,7 @@ Suppose \(a\) is not a left zero divisor and \(ab=ac\). Then \(a(b-c)=ab-ac=0\) 
 \end{proof}
 
 \begin{remark}\label{ringsfields:rem-unit-not-zd}
-A unit is never a zero divisor: if \(u\) is a unit and \(ub=0\), then \(b = u^{-1}(ub) = u^{-1}\cdot 0 = 0\). The converse fails in general --- in \(\Z\) every nonzero element is a non-zero-divisor, but only \(\pm1\) are units --- though it does hold in finite rings, as Theorem~\ref{ringsfields:thm-finite-domain} establishes.
+A unit is never a zero divisor: if \(u\) is a unit and \(ub=0\), then \(b = u^{-1}(ub) = u^{-1}\cdot 0 = 0\). The converse fails in general --- in \(\Z\) every nonzero element is a non-zero-divisor, but only \(\pm1\) are units --- though it does hold in finite commutative rings, by the injectivity-implies-surjectivity argument that proves Theorem~\ref{ringsfields:thm-finite-domain}.
 \end{remark}
 
 \begin{example}\label{ringsfields:exa-zerodiv}
@@ -1293,8 +1293,8 @@ polynomial.
 The product formula is exactly what we obtain by multiplying out
 \(\bigl(\sum_i a_i X^i\bigr)\bigl(\sum_j b_j X^j\bigr)\) and collecting like
 powers of \(X\), using the rule \(X^i \cdot X^j = X^{i+j}\). Stating
-it as a convolution makes no appeal to "substituting a value for
-\(X\)"; it is a purely formal manipulation of coefficient sequences.
+it as a convolution makes no appeal to ``substituting a value for
+\(X\)''; it is a purely formal manipulation of coefficient sequences.
 
 \begin{theorem}[{\(\F[X]\) is a commutative ring}]\label{polynomials:thm:ring}
 With the operations of Definition~\ref{polynomials:def:operations}, the set
@@ -1457,8 +1457,8 @@ unit \(u \in \F^\times\), i.e.\ if they differ only by a nonzero scalar factor.
 
 Every nonzero polynomial \(f\) has exactly one monic associate, obtained by
 dividing through by its leading coefficient: \(\operatorname{lc}(f)^{-1} f\).
-Choosing the monic representative is the standard way to pin down "the" gcd or
-"the" irreducible factor uniquely, and we adopt it below.
+Choosing the monic representative is the standard way to pin down ``the'' gcd or
+``the'' irreducible factor uniquely, and we adopt it below.
 \subsection{The division algorithm}
 \label{polynomials:subsec:division}
 
@@ -2924,14 +2924,14 @@ The objects constructed above — vector spaces, bases and dimension, linear map
 
 The polynomial-based proof systems underlying Halo~2 and Zcash Orchard operate over a single, highly particular kind of object: a finite multiplicative subgroup of a field, generated by a \emph{root of unity}. Nearly every operation such a system performs---committing to a polynomial, checking that two polynomials agree, enforcing that a constraint vanishes everywhere it should, multiplying or interpolating efficiently---is ultimately a computation indexed by such a subgroup. This section develops the theory of these subgroups from first principles. We assume only the basic theory of fields, polynomials over a field, and finite cyclic groups, and we recall these as needed.
 
-Throughout, \(\F\) denotes a field. When \(\F\) is to be finite the notation \(\Fq\) denotes the field with \(q\) elements (so \(q\) is a prime power); when we intend a prime field specifically we use the notation \(\Fp\). We write the multiplicative group of nonzero elements as \(\F^\times = \F \setminus \{0\}\). Set \(\N = \{1,2,3,\dots\}\), and reserve the letter \(n\) for the order of the domain we shall construct.
+Throughout, \(\F\) denotes a field. When \(\F\) is to be finite the notation \(\Fq\) denotes the field with \(q\) elements (so \(q\) is a prime power); when we intend a prime field specifically we use the notation \(\Fp\). We write the multiplicative group of nonzero elements as \(\F^\times = \F \setminus \{0\}\). We reserve the letter \(n\) for the order of the domain we shall construct; throughout, \(n \ge 1\).
 
 \subsection{Roots of unity}
 
 The starting point is the equation \(X^n = 1\). Its solutions in a field are the roots of unity of order dividing \(n\).
 
 \begin{definition}\label{rootsofunity:def-root}
-Let \(\F\) be a field and \(n \in \N\). An element \(\omega \in \F\) is an \emph{\(n\)-th root of unity} if \(\omega^n = 1\). We write
+Let \(\F\) be a field and \(n \in \N_{>0}\). An element \(\omega \in \F\) is an \emph{\(n\)-th root of unity} if \(\omega^n = 1\). We write
 \[
   \mu_n(\F) = \{\,\omega \in \F : \omega^n = 1\,\}
 \]
@@ -2995,7 +2995,7 @@ This is Theorem~\ref{finitefields:thm:cyclic} applied to the finite subgroup \(\
 A generator of \(\Fq^\times\) is classically called a \emph{primitive element} or \emph{primitive root} of \(\Fq\); it is a primitive \((q-1)\)-th root of unity in the sense of \cref{rootsofunity:def-primitive}.
 
 \begin{theorem}[Existence and count of primitive \(n\)-th roots of unity]\label{rootsofunity:thm-existence}
-Let \(\Fq\) be a finite field and \(n \in \N\) with \(\gcd(n, q) = 1\) (automatic when \(n < p\), where \(p = \operatorname{char}\Fq\); equivalently, in characteristic \(p\), exactly the condition \(p \nmid n\)). Then:
+Let \(\Fq\) be a finite field and \(n \in \N_{>0}\) with \(\gcd(n, q) = 1\) (automatic when \(n < p\), where \(p = \operatorname{char}\Fq\); equivalently, in characteristic \(p\), exactly the condition \(p \nmid n\)). Then:
 \begin{enumerate}
 \item \(\Fq\) contains a primitive \(n\)-th root of unity if and only if \(n \mid q - 1\).
 \item When \(n \mid q-1\), the group \(\mu_n(\Fq)\) is cyclic of order exactly \(n\), and the number of primitive \(n\)-th roots of unity in \(\Fq\) is \(\varphi(n)\), where \(\varphi\) is Euler's totient function.
@@ -3142,7 +3142,7 @@ Fix \(i\). From \cref{rootsofunity:thm-vanishing}, \(Z_H(X) = \prod_{j=0}^{n-1}(
 \[
   \frac{Z_H(X)}{X-\omega^i} = \prod_{\substack{j=0\\ j\ne i}}^{n-1}(X - \omega^j),
 \]
-which is exactly the numerator of \(L_i\) in \cref{rootsofunity:def-lagrange}. It remains to evaluate the denominator \(\prod_{j\ne i}(\omega^i-\omega^j)\). This equals \(\lim_{X\to\omega^i} Z_H(X)/(X-\omega^i) = Z_H'(\omega^i)\), the value of the derivative; concretely \(Z_H'(X) = nX^{n-1}\), so
+which is exactly the numerator of \(L_i\) in \cref{rootsofunity:def-lagrange}. It remains to evaluate the denominator \(\prod_{j\ne i}(\omega^i-\omega^j)\). Writing \(Z_H = (X-\omega^i)\,g\) with \(g = \prod_{j\ne i}(X-\omega^j)\), the product rule (\cref{polynomials:prop:deriv-rules}) gives \(Z_H' = g + (X-\omega^i)g'\), so \(Z_H'(\omega^i) = g(\omega^i) = \prod_{j\ne i}(\omega^i-\omega^j)\)---the computation already made for simple roots in the proof of \cref{polynomials:thm:multiple-root}; concretely \(Z_H'(X) = nX^{n-1}\), so
 \[
   Z_H'(\omega^i) = n(\omega^i)^{n-1} = n\,\omega^{i n}\,\omega^{-i} = n\cdot 1\cdot \omega^{-i} = \frac{n}{\omega^i},
 \]
@@ -3150,7 +3150,7 @@ using \(\omega^{in} = (\omega^n)^i = 1\). Therefore
 \[
   L_i(X) = \frac{Z_H(X)/(X-\omega^i)}{Z_H'(\omega^i)} = \frac{(X^n-1)/(X-\omega^i)}{n/\omega^i} = \frac{\omega^i(X^n-1)}{n(X-\omega^i)},
 \]
-as claimed. (The cancellation \(\prod_{j\ne i}(\omega^i-\omega^j) = Z_H'(\omega^i)\) is the standard fact that, for a polynomial split into distinct linear factors, the value at a root of the product with that factor removed equals the derivative at the root.)
+as claimed.
 \end{proof}
 
 \begin{remark}[Barycentric form]\label{rootsofunity:rem-barycentric}
@@ -3610,7 +3610,7 @@ The affine points of order \(2\) in \(E(\Fp)\) are exactly the points \((x_0, 0)
 \end{proposition}
 
 \begin{proof}
-\(P = (x,y)\) has order \(2\) iff \(P = -P = (x, -y)\) and \(P \neq \mathcal{O}\), i.e. \(y = -y\), i.e. \(y = 0\) (as \(\mathrm{char}\neq 2\)); the curve equation then forces \(f(x) = 0\). Together with \(\mathcal{O}\) these form the \(2\)-torsion subgroup \(E(\Fp)[2]\), which is trivial, \(\Z/2\Z\), or \((\Z/2\Z)^2\); its size is even iff a root exists, and by Lagrange evenness of the size is equivalent to evenness of \(\#E(\Fp)\).
+\(P = (x,y)\) has order \(2\) iff \(P = -P = (x, -y)\) and \(P \neq \mathcal{O}\), i.e. \(y = -y\), i.e. \(y = 0\) (as \(\mathrm{char}\neq 2\)); the curve equation then forces \(f(x) = 0\). Together with \(\mathcal{O}\) these form the \(2\)-torsion subgroup \(E(\Fp)[2]\), which is trivial, \(\Z/2\Z\), or \((\Z/2\Z)^2\). For the parity claim, negation \(P \mapsto -P\) is an involution of \(E(\Fp)\) whose fixed points are exactly \(\mathcal{O}\) and the points \((x_0, 0)\); all other points pair off into \(2\)-element orbits, so \(\#E(\Fp) \equiv 1 + N \pmod{2}\), where \(N \in \{0,1,3\}\) is the number of roots of \(f\) in \(\Fp\). Hence \(\#E(\Fp)\) is even iff \(N\) is odd, i.e.\ iff \(N \ge 1\), i.e.\ iff \(f\) has a root in \(\Fp\).
 \end{proof}
 
 \begin{remark}\label{ellipticcurves:rem-pasta-odd}
@@ -3757,7 +3757,7 @@ The discrete logarithm problem in \(E_p(\Fp)\) and \(E_q(\Fq)\) is believed to r
 \end{example}
 \subsection{Summary}
 
-We have constructed the elliptic curve group from the ground up: a nonsingular short Weierstrass cubic over a field of characteristic \(\neq 2,3\), its affine points together with a point at infinity, and the chord-and-tangent addition with explicit formulas~\eqref{ellipticcurves:eq-add}--\eqref{ellipticcurves:eq-double} and all edge cases. The point at infinity is the identity, \((x,y)\) and \((x,-y)\) are inverses, commutativity is immediate, and associativity, though geometrically subtle, makes \(E(K)\) an abelian group. Projective and Jacobian coordinates remove inversions from the inner loop, and double-and-add computes \([n]P\) in \(O(\log n)\) group operations. Over \(\Fp\) the group has order \(p + 1 - t\) with \(|t| \le 2\sqrt p\) (Hasse); choosing the order to be prime (cofactor \(1\), as for the Pasta curves) yields a clean cyclic group in which the discrete logarithm problem is hard. Finally, the \(j = 0\) curves \(y^2 = x^3 + b\) admit the efficiently computable GLV endomorphism. The Pasta curves \(y^2 = x^3 + 5\) over \(\Fp\) and \(\Fq\) realize all of these features simultaneously and form the \(2\)-cycle that carries the recursive proofs of Halo~2 and Zcash Orchard.
+We have constructed the elliptic curve group from the ground up: a nonsingular short Weierstrass cubic over a field of characteristic \(\neq 2,3\), its affine points together with a point at infinity, and the chord-and-tangent addition with explicit formulas~\eqref{ellipticcurves:eq-add}--\eqref{ellipticcurves:eq-double} and all edge cases. The point at infinity is the identity, \((x,y)\) and \((x,-y)\) are inverses, commutativity is immediate, and associativity, though geometrically subtle, makes \(E(K)\) an abelian group. Projective and Jacobian coordinates remove inversions from the inner loop, and double-and-add computes \([n]P\) in \(O(\log n)\) group operations. Over \(\Fp\) the group has order \(p + 1 - t\) with \(|t| \le 2\sqrt p\) (Hasse); choosing the order to be prime (cofactor \(1\), as for the Pasta curves) yields a clean cyclic group in which the discrete logarithm problem is hard. Finally, the \(j = 0\) curves \(y^2 = x^3 + b\) admit the efficiently computable GLV endomorphism. The Pasta curves \(y^2 = x^3 + 5\) over \(\Fp\) and \(\Fq\) realize all of these features simultaneously and form the \(2\)-cycle that carries the proofs of Halo~2 and Zcash Orchard and was designed to support recursive proof composition.
 
 \clearpage
 
@@ -3813,7 +3813,7 @@ Let \(S\) be a nonempty finite set. The \emph{uniform distribution} on \(S\) is 
 \]
 \end{definition}
 
-Thus, for uniform sampling, probability is exactly the ratio of favourable outcomes to total outcomes, recovering the classical "counting" notion of probability.
+Thus, for uniform sampling, probability is exactly the ratio of favourable outcomes to total outcomes, recovering the classical ``counting'' notion of probability.
 
 \subsection{Conditional probability and independence}
 
@@ -3858,7 +3858,7 @@ A family \(\{A_i\}_{i \in I}\) of events is \emph{mutually independent} if for e
 \end{definition}
 
 \begin{remark}\label{probability:rem-indep}
-When \(\Pr[B] > 0\), independence of \(A\) and \(B\) is equivalent to \(\Pr[A \mid B] = \Pr[A]\): conditioning on \(B\) does not change the probability of \(A\). Mutual independence is strictly stronger than pairwise independence. The standard counterexample is the following: toss two fair coins, and let \(A\) = "first is heads", \(B\) = "second is heads", \(C\) = "the two coins differ". Each pair is independent, yet \(\Pr[A \cap B \cap C] = 0 \neq \tfrac18 = \Pr[A]\Pr[B]\Pr[C]\), so the three are not mutually independent.
+When \(\Pr[B] > 0\), independence of \(A\) and \(B\) is equivalent to \(\Pr[A \mid B] = \Pr[A]\): conditioning on \(B\) does not change the probability of \(A\). Mutual independence is strictly stronger than pairwise independence. The standard counterexample is the following: toss two fair coins, and let \(A\) = ``first is heads'', \(B\) = ``second is heads'', \(C\) = ``the two coins differ''. Each pair is independent, yet \(\Pr[A \cap B \cap C] = 0 \neq \tfrac18 = \Pr[A]\Pr[B]\Pr[C]\), so the three are not mutually independent.
 \end{remark}
 
 \subsection{Random variables and expectation}
@@ -3937,7 +3937,7 @@ For any events \(A_1, \dots, A_n\) in a finite probability space,
 \end{theorem}
 
 \begin{proof}
-Define the disjoint "first occurrence" events \(B_1 = A_1\) and \(B_i = A_i \setminus (A_1 \cup \cdots \cup A_{i-1})\) for \(i \ge 2\). The \(B_i\) are pairwise disjoint, \(B_i \subseteq A_i\), and \(\bigcup_i B_i = \bigcup_i A_i\). By finite additivity and monotonicity (Proposition~\ref{probability:prop-axioms}),
+Define the disjoint ``first occurrence'' events \(B_1 = A_1\) and \(B_i = A_i \setminus (A_1 \cup \cdots \cup A_{i-1})\) for \(i \ge 2\). The \(B_i\) are pairwise disjoint, \(B_i \subseteq A_i\), and \(\bigcup_i B_i = \bigcup_i A_i\). By finite additivity and monotonicity (Proposition~\ref{probability:prop-axioms}),
 \[
 \Pr\!\left[\bigcup_i A_i\right] = \Pr\!\left[\bigcup_i B_i\right] = \sum_i \Pr[B_i] \le \sum_i \Pr[A_i]. \qedhere
 \]
@@ -3986,7 +3986,7 @@ The threshold \(k \approx \sqrt{N}\) is the reason an \(n\)-bit hash function (s
 
 \subsection{Statistical distance}
 
-Comparing distributions---for example a real key-generation procedure against an idealised uniform one---requires a notion of how far apart two distributions are. The appropriate notion for "no statistical test can distinguish them well" is statistical (total variation) distance.
+Comparing distributions---for example a real key-generation procedure against an idealised uniform one---requires a notion of how far apart two distributions are. The appropriate notion for ``no statistical test can distinguish them well'' is statistical (total variation) distance.
 
 \begin{definition}[Statistical distance]\label{probability:def-sd}
 Let \(P\) and \(Q\) be probability distributions on the same finite set \(S\) (i.e.\ probability mass functions \(P, Q\colon S \to [0,1]\)). Their \emph{statistical distance} (or \emph{total variation distance}) is
@@ -4023,7 +4023,7 @@ using \(|\sum_s a_s| \le \sum_s |a_s|\) on each fibre, and that the fibres \(f^{
 \end{proof}
 
 \begin{remark}[Distinguishing interpretation]\label{probability:rem-sd}
-Part (3) states that \(\Delta(P,Q)\) is exactly the best advantage of any (even computationally unbounded) test that, given a single sample, must guess whether it came from \(P\) or \(Q\): the optimal test outputs "\(P\)" on the set \(A = S^+\), and its advantage \(\Pr_{P}[A] - \Pr_Q[A]\) equals \(\Delta(P,Q)\). Part (4) is what makes statistical distance compose in proofs: applying the same procedure to two close inputs keeps the outputs close. If \(\Delta(P,Q) \le \varepsilon\), then \(P\) and \(Q\) are interchangeable in any analysis at the cost of an additive \(\varepsilon\) in every probability. When \(\varepsilon\) is negligible (defined below), we call \(P\) and \(Q\) \emph{statistically indistinguishable}.
+Part (3) states that \(\Delta(P,Q)\) is exactly the best advantage of any (even computationally unbounded) test that, given a single sample, must guess whether it came from \(P\) or \(Q\): the optimal test outputs ``\(P\)'' on the set \(A = S^+\), and its advantage \(\Pr_{P}[A] - \Pr_Q[A]\) equals \(\Delta(P,Q)\). Part (4) is what makes statistical distance compose in proofs: applying the same procedure to two close inputs keeps the outputs close. If \(\Delta(P,Q) \le \varepsilon\), then \(P\) and \(Q\) are interchangeable in any analysis at the cost of an additive \(\varepsilon\) in every probability. When \(\varepsilon\) is negligible (defined below), we call \(P\) and \(Q\) \emph{statistically indistinguishable}.
 \end{remark}
 \subsection{Uniform sampling and the bias of modular reduction}
 
@@ -4063,21 +4063,21 @@ The consequence is as follows: to sample a scalar mod a \(\sim 256\)-bit prime \
 
 \subsection{Asymptotic notation}
 
-The discussion now turns from probability to growth rates. To address efficiency and hardness, we must compare the manner in which functions of an integer parameter grow as that parameter tends to infinity. The Bachmann--Landau notation makes such comparisons precise. Throughout, functions map \(\N\) (or a cofinite subset thereof) to the nonnegative reals \(\R_{\ge 0}\), and "for sufficiently large \(n\)" means "for all \(n\) beyond some threshold \(n_0\)".
+The discussion now turns from probability to growth rates. To address efficiency and hardness, we must compare the manner in which functions of an integer parameter grow as that parameter tends to infinity. The Bachmann--Landau notation makes such comparisons precise. Throughout, functions map \(\N\) (or a cofinite subset thereof) to the nonnegative reals \(\R_{\ge 0}\), and ``for sufficiently large \(n\)'' means ``for all \(n\) beyond some threshold \(n_0\)''.
 
 \begin{definition}[Big-O, Omega, Theta, little-o, little-omega]\label{probability:def-asymp}
 Let \(f, g\colon \N \to \R_{\ge 0}\) with \(g\) eventually positive. We define the following:
 \begin{itemize}
-\item \(f = O(g)\) (read "\(f\) is big-O of \(g\)", an asymptotic upper bound) if there exist constants \(c > 0\) and \(n_0\) with \(f(n) \le c\,g(n)\) for all \(n \ge n_0\).
+\item \(f = O(g)\) (read ``\(f\) is big-O of \(g\)'', an asymptotic upper bound) if there exist constants \(c > 0\) and \(n_0\) with \(f(n) \le c\,g(n)\) for all \(n \ge n_0\).
 \item \(f = \Omega(g)\) (asymptotic lower bound) if there exist \(c > 0\) and \(n_0\) with \(f(n) \ge c\,g(n)\) for all \(n \ge n_0\). Equivalently, \(f = \Omega(g)\) iff \(g = O(f)\).
 \item \(f = \Theta(g)\) (tight bound) if \(f = O(g)\) and \(f = \Omega(g)\); i.e.\ there are \(c_1, c_2 > 0\) and \(n_0\) with \(c_1 g(n) \le f(n) \le c_2 g(n)\) for \(n \ge n_0\).
-\item \(f = o(g)\) (read "little-o", strictly smaller order) if for every \(c > 0\) there is \(n_0\) with \(f(n) \le c\,g(n)\) for all \(n \ge n_0\); equivalently \(\lim_{n\to\infty} f(n)/g(n) = 0\).
+\item \(f = o(g)\) (read ``little-o'', strictly smaller order) if for every \(c > 0\) there is \(n_0\) with \(f(n) \le c\,g(n)\) for all \(n \ge n_0\); equivalently \(\lim_{n\to\infty} f(n)/g(n) = 0\).
 \item \(f = \omega(g)\) (strictly larger order) if \(g = o(f)\); equivalently \(\lim_{n\to\infty} f(n)/g(n) = \infty\).
 \end{itemize}
 \end{definition}
 
 \begin{remark}\label{probability:rem-asymp-eq}
-The "\(=\)" in "\(f = O(g)\)" is traditional but denotes set membership: \(O(g)\) is the class of all functions bounded above by a constant multiple of \(g\), and \(f = O(g)\) means \(f \in O(g)\). One never reads such equations right to left. We follow the customary abuse of notation here.
+The ``\(=\)'' in ``\(f = O(g)\)'' is traditional but denotes set membership: \(O(g)\) is the class of all functions bounded above by a constant multiple of \(g\), and \(f = O(g)\) means \(f \in O(g)\). One never reads such equations right to left. We follow the customary abuse of notation here.
 \end{remark}
 
 \begin{example}\label{probability:exp-asymp}
@@ -4111,14 +4111,14 @@ A function \(\nu\colon \N \to \R_{\ge 0}\) is \emph{negligible}, written \(\nu =
 \[
 \nu(\lambda) < \frac{1}{\lambda^{c}} \qquad \text{for all } \lambda \ge \lambda_0.
 \]
-Equivalently, \(\nu(\lambda) = o(\lambda^{-c})\) for every constant \(c > 0\); equivalently, \(\lambda^{c}\,\nu(\lambda) \to 0\) as \(\lambda \to \infty\) for every constant \(c\). A function is \emph{noticeable} (or non-negligible) if it is not negligible, i.e.\ \(f(\lambda) \ge \lambda^{-c}\) infinitely often for some constant \(c\); it is \emph{overwhelming} if \(1 - f\) is negligible.
+Equivalently, \(\nu(\lambda) = o(\lambda^{-c})\) for every constant \(c > 0\); equivalently, \(\lambda^{c}\,\nu(\lambda) \to 0\) as \(\lambda \to \infty\) for every constant \(c\). A function is \emph{non-negligible} if it is not negligible, i.e.\ \(f(\lambda) \ge \lambda^{-c}\) for infinitely many \(\lambda\), for some constant \(c\); it is \emph{noticeable} if there exist \(c\) and \(\lambda_0\) with \(f(\lambda) \ge \lambda^{-c}\) for all \(\lambda \ge \lambda_0\) (noticeable implies non-negligible, but not conversely); it is \emph{overwhelming} if \(1 - f\) is negligible.
 \end{definition}
 
 \begin{example}\label{probability:exp-negl}
 \(2^{-\lambda}\), \(2^{-\sqrt{\lambda}}\), and \(\lambda^{-\log\lambda}\) are negligible. Indeed for \(2^{-\lambda}\): given any \(c\), since \(2^{-\lambda}\lambda^{c} = \lambda^c / 2^{\lambda} \to 0\) (a polynomial over an exponential), the function meets the definition. By contrast, \(1/\lambda^{100}\) is \emph{not} negligible---taking \(c = 101\) shows \(1/\lambda^{100} > 1/\lambda^{101}\) for all \(\lambda\)---it is noticeable, even though it tends to \(0\). This is the key subtlety: tending to zero does not suffice; a negligible function must beat every inverse polynomial.
 \end{example}
 
-The reason "negligible" is the correct closure of "ignorable" is the following stability under the operations that appear in security proofs.
+The reason ``negligible'' is the correct closure of ``ignorable'' is the following stability under the operations that appear in security proofs.
 
 \begin{proposition}[Closure properties of negligible functions]\label{probability:prop-negl-closure}
 Let \(\nu, \mu\) be negligible and let \(p\) be a polynomially bounded function. Then:
@@ -4141,28 +4141,28 @@ Let \(\nu, \mu\) be negligible and let \(p\) be a polynomially bounded function.
 \end{proof}
 
 \begin{remark}[Why negligible is the threshold of security]\label{probability:rem-negl}
-Suppose an adversary wins a game with negligible probability \(\nu(\lambda)\). If it repeats the attack \(p(\lambda)\) times (polynomially many, the most an efficient adversary can afford), the probability that some repetition succeeds is, by the union bound, at most \(p(\lambda)\nu(\lambda)\)---still negligible by Proposition~\ref{probability:prop-negl-closure}(2). Thus negligible success probability remains negligible under any efficient amplification: it is genuinely ignorable. Conversely a noticeable success probability \(\ge \lambda^{-c}\) can be boosted to a constant by \(\lambda^{c}\) repetitions. This dichotomy is the formal backbone of the phrase "the scheme is secure except with negligible probability".
+Suppose an adversary wins a game with negligible probability \(\nu(\lambda)\). If it repeats the attack \(p(\lambda)\) times (polynomially many, the most an efficient adversary can afford), the probability that some repetition succeeds is, by the union bound, at most \(p(\lambda)\nu(\lambda)\)---still negligible by Proposition~\ref{probability:prop-negl-closure}(2). Thus negligible success probability remains negligible under any efficient amplification: it is genuinely ignorable. Conversely a noticeable success probability \(\ge \lambda^{-c}\) can be boosted to a constant by \(\lambda^{c}\) repetitions. The negligible/non-negligible split is the formal backbone of the phrase ``the scheme is secure except with negligible probability'': security asserts a negligible advantage, and an attack means a non-negligible one. (A merely non-negligible success probability is boosted to a constant only on the infinitely many \(\lambda\) where the inverse-polynomial bound holds, which already suffices to contradict a security definition.)
 \end{remark}
 
 \subsection{Algorithms, running time, and PPT}
 
-It remains to make "efficient algorithm" and "infeasible" precise. We adopt the standard model: algorithms are Turing machines (or, equivalently up to polynomial factors, programs in any reasonable model), inputs and outputs are finite binary strings, and the number of elementary steps as a function of input length is the resource we measure. Write \(\{0,1\}^*\) for the set of all finite binary strings and \(|x|\) for the length of \(x \in \{0,1\}^*\).
+It remains to make ``efficient algorithm'' and ``infeasible'' precise. We adopt the standard model: algorithms are Turing machines (or, equivalently up to polynomial factors, programs in any reasonable model), inputs and outputs are finite binary strings, and the number of elementary steps as a function of input length is the resource we measure. Write \(\{0,1\}^*\) for the set of all finite binary strings and \(|x|\) for the length of \(x \in \{0,1\}^*\).
 
 \begin{definition}[Deterministic polynomial-time algorithm]\label{probability:def-pt}
 An algorithm \(M\) runs in \emph{(deterministic) polynomial time} if there is a polynomial \(p\) such that, on every input \(x \in \{0,1\}^*\), \(M\) halts within at most \(p(|x|)\) steps and produces an output. The class of decision problems solvable by such machines is \(\mathsf{P}\).
 \end{definition}
 
-Determinism is insufficient for cryptography: key generation, sampling, and many algorithms require randomness. We model randomness by granting the machine access to an auxiliary tape of independent uniform random bits (the "coins").
+Determinism is insufficient for cryptography: key generation, sampling, and many algorithms require randomness. We model randomness by granting the machine access to an auxiliary tape of independent uniform random bits (the ``coins'').
 
 \begin{definition}[Probabilistic algorithm and PPT]\label{probability:def-ppt}
-A \emph{probabilistic} (or \emph{randomised}) algorithm \(M\) is a Turing machine with an additional read-only \emph{random tape} initialised with independent uniformly random bits \(r \in \{0,1\}^*\). For a fixed input \(x\), the output \(M(x)\) is a random variable over the choice of \(r\); write \(M(x; r)\) when one wishes to display the coins explicitly, and then \(M(x;\cdot)\) is a deterministic function. The algorithm runs in \emph{probabilistic polynomial time} (it is \emph{PPT}) if there is a polynomial \(p\) such that, for every input \(x\) \emph{and every choice of coins} \(r\), \(M\) halts within \(p(|x|)\) steps. (Bounding the time for every \(r\), not merely in expectation, is the standard "strict" notion and ensures \(M\) ever reads only \(p(|x|)\) coins.)
+A \emph{probabilistic} (or \emph{randomised}) algorithm \(M\) is a Turing machine with an additional read-only \emph{random tape} initialised with independent uniformly random bits \(r \in \{0,1\}^*\). For a fixed input \(x\), the output \(M(x)\) is a random variable over the choice of \(r\); write \(M(x; r)\) when one wishes to display the coins explicitly, and then \(M(x;\cdot)\) is a deterministic function. The algorithm runs in \emph{probabilistic polynomial time} (it is \emph{PPT}) if there is a polynomial \(p\) such that, for every input \(x\) \emph{and every choice of coins} \(r\), \(M\) halts within \(p(|x|)\) steps. (Bounding the time for every \(r\), not merely in expectation, is the standard ``strict'' notion and ensures \(M\) ever reads only \(p(|x|)\) coins.)
 \end{definition}
 
 \begin{remark}[Non-uniformity and circuits]\label{probability:rem-nonuniform}
-There are two standard ways to formalise an efficient adversary. The \emph{uniform} model is a single PPT machine that works for all input lengths, as above. The \emph{non-uniform} model allows a separate algorithm (equivalently, a Boolean circuit) of size \(\poly(\lambda)\) for each \(\lambda\), which may be hard-wired with an arbitrary polynomial-length "advice" string depending on \(\lambda\). Non-uniform adversaries are at least as powerful as uniform ones and are often more convenient in reduction proofs because the advice can encode a "best" attack. The asymptotic theory below is identical for both; security definitions in the Halo~2/Orchard setting typically state the security against non-uniform PPT adversaries, which is the more conservative choice.
+There are two standard ways to formalise an efficient adversary. The \emph{uniform} model is a single PPT machine that works for all input lengths, as above. The \emph{non-uniform} model allows a separate algorithm (equivalently, a Boolean circuit) of size \(\poly(\lambda)\) for each \(\lambda\), which may be hard-wired with an arbitrary polynomial-length ``advice'' string depending on \(\lambda\). Non-uniform adversaries are at least as powerful as uniform ones and are often more convenient in reduction proofs because the advice can encode a ``best'' attack. The asymptotic theory below is identical for both; security definitions in the Halo~2/Orchard setting typically state the security against non-uniform PPT adversaries, which is the more conservative choice.
 \end{remark}
 
-With efficiency pinned down, we can state what it means for a computational task to be hard. The guiding principle is the Cobham--Edmonds thesis: "efficiently computable" = "computable in polynomial time". Its negation gives infeasibility.
+With efficiency pinned down, we can state what it means for a computational task to be hard. The guiding principle is the Cobham--Edmonds thesis: ``efficiently computable'' = ``computable in polynomial time''. Its negation gives infeasibility.
 
 \begin{definition}[Computational infeasibility]\label{probability:def-infeasible}
 A computational task parameterised by the security parameter \(\lambda\) is \emph{(computationally) feasible} if there is a PPT algorithm solving it (with overwhelming success probability). It is \emph{infeasible} if for \emph{every} PPT algorithm \(\Adv\) the probability that \(\Adv\) solves it is negligible in \(\lambda\):
@@ -4177,7 +4177,7 @@ Cryptographic assumptions are statements of this form. For instance, the discret
 \[
 \Pr\Big[\Adv(g, g^{x}) = x \;\Big|\; g \leftarrow \text{generator},\; x \leftarrow \Z/q\Z\Big] = \negl(\lambda).
 \]
-The entire edifice of Halo~2 and Orchard rests on such infeasibility statements, which one makes true in practice by choosing \(\lambda\) (and hence the group size \(\approx 2^{\lambda}\)) large enough that the best known attack---running in time \(\Theta(\sqrt{q}) = \Theta(2^{\lambda/2})\) by the birthday/rho phenomenon of Remark~\ref{probability:rem-birthday}---is astronomically slow. The asymptotic language of this section is what permits the terms "negligible" and "polynomial" without committing to a particular \(\lambda\); the concrete-security viewpoint then instantiates \(\lambda\) (e.g.\ \(\lambda = 128\)) to read off actual bit-counts.
+The entire edifice of Halo~2 and Orchard rests on such infeasibility statements, which one makes true in practice by choosing \(\lambda\) (and hence the group size \(\approx 2^{2\lambda}\)) large enough that the best known attack---running in time \(\Theta(\sqrt{q}) = \Theta(2^{\lambda})\) by the birthday/rho phenomenon of Remark~\ref{probability:rem-birthday}---is astronomically slow. The asymptotic language of this section is what permits the terms ``negligible'' and ``polynomial'' without committing to a particular \(\lambda\); the concrete-security viewpoint then instantiates \(\lambda\) (e.g.\ \(\lambda = 128\)) to read off actual bit-counts.
 \end{remark}
 
 \subsection{The security parameter}\label{probability:sub-secparam}
@@ -4185,15 +4185,15 @@ The entire edifice of Halo~2 and Orchard rests on such infeasibility statements,
 This section closes by making explicit the parameter that threads through every preceding definition.
 
 \begin{definition}[Security parameter]\label{probability:def-secparam}
-The \emph{security parameter} is a positive integer \(\lambda \in \N\) that one supplies to all algorithms of a cryptographic scheme, conventionally in unary as the string \(1^\lambda\) (so that "polynomial in the input length" coincides with "polynomial in \(\lambda\)"). It governs simultaneously:
+The \emph{security parameter} is a positive integer \(\lambda \in \N\) that one supplies to all algorithms of a cryptographic scheme, conventionally in unary as the string \(1^\lambda\) (so that ``polynomial in the input length'' coincides with ``polynomial in \(\lambda\)''). It governs simultaneously:
 \begin{itemize}
-\item the \emph{sizes} of objects (key lengths, group order \(\approx 2^\lambda\), field size), each \(\poly(\lambda)\);
+\item the \emph{sizes} of objects (key lengths, group order \(\approx 2^{2\lambda}\), field size), each \(\poly(\lambda)\);
 \item the \emph{running time} of honest algorithms, which must be \(\poly(\lambda)\); and
 \item the \emph{security level}: every PPT adversary's advantage must be \(\negl(\lambda)\).
 \end{itemize}
 \end{definition}
 
 \begin{remark}[Why unary, and what \(\lambda\) buys]\label{probability:rem-unary}
-Passing \(1^\lambda\) (a string of \(\lambda\) ones, of length \(\lambda\)) rather than the integer \(\lambda\) in binary (length \(\log_2\lambda\)) is a deliberate convention: it forces "polynomial-time in the input length" to mean polynomial in \(\lambda\) itself, so an honest key generator may take time \(\poly(\lambda)\) to produce \(\lambda\)-bit keys. As \(\lambda\) grows, two things happen in lockstep: honest parties pay a polynomial cost, while every adversary's success probability falls negligibly and (concretely) the best attack's running time grows exponentially. Asymptotic security is the statement that this gap holds for all sufficiently large \(\lambda\); the practitioner then fixes a single value (commonly \(\lambda = 128\), targeting \(2^{128}\)-operation attacks) and verifies that the concrete sizes---a \(\sim 255\)-bit Pallas/Vesta scalar field, hash outputs of \(\geq 256\) bits per the birthday bound of Proposition~\ref{probability:prop-birthday}, and sampling slack of \(\sim 128\) extra bits per Proposition~\ref{probability:prop-modbias}---deliver it. Every "negligible" in the remainder of this monograph is implicitly a function of this \(\lambda\).
+Passing \(1^\lambda\) (a string of \(\lambda\) ones, of length \(\lambda\)) rather than the integer \(\lambda\) in binary (length \(\log_2\lambda\)) is a deliberate convention: it forces ``polynomial-time in the input length'' to mean polynomial in \(\lambda\) itself, so an honest key generator may take time \(\poly(\lambda)\) to produce \(\lambda\)-bit keys. As \(\lambda\) grows, two things happen in lockstep: honest parties pay a polynomial cost, while every adversary's success probability falls negligibly and (concretely) the best attack's running time grows exponentially. Asymptotic security is the statement that this gap holds for all sufficiently large \(\lambda\); the practitioner then fixes a single value (commonly \(\lambda = 128\), targeting \(2^{128}\)-operation attacks) and verifies that the concrete sizes---a \(\sim 255\)-bit Pallas/Vesta scalar field, hash outputs of \(\geq 256\) bits per the birthday bound of Proposition~\ref{probability:prop-birthday}, and sampling slack of \(\sim 128\) extra bits per Proposition~\ref{probability:prop-modbias}---deliver it. Every ``negligible'' in the remainder of this monograph is implicitly a function of this \(\lambda\).
 \end{remark}
 \end{document}

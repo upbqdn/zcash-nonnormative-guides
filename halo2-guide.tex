@@ -158,8 +158,9 @@ verify each PCS opening, and run the PIOP's final accept/reject check.
 \end{construction}
 
 \begin{theorem}[Soundness preservation]\label{thm:piop-snark}
-If $\Pi$ has knowledge soundness $\kappa_{\Pi}$ and the PCS has knowledge
-binding $\kappa_{\mathrm{PCS}}$, the compiled SNARK has knowledge soundness
+If $\Pi$ has knowledge soundness $\kappa_{\Pi}$ and the PCS is extractable
+with extraction error $\kappa_{\mathrm{PCS}}$ (the PCS definition of the
+\emph{Crypto Guide}), the compiled SNARK has knowledge soundness
 $O(\kappa_\Pi + Q \cdot \kappa_{\mathrm{PCS}})$ in the random oracle model,
 where $Q$ is the adversary's RO-query budget.
 \end{theorem}
@@ -283,7 +284,8 @@ instead of reassembling them from forked transcripts. Ghoshal and Tessaro
 (CRYPTO 2021) carry out this analysis for Bulletproofs-style
 inner-product arguments, proving tight state-restoration soundness ---
 and hence tight Fiat--Shamir security --- in the AGM. The accumulation
-analysis of BCMS20, by contrast, does not invoke the AGM: it proves
+analysis of BCMS20 (B\"unz, Chiesa, Mishra, Spooner; TCC 2020), by
+contrast, does not invoke the AGM: it proves
 security in the random oracle model under the DL assumption
 (Theorem~\ref{thm:bcms20-acc}).
 
@@ -295,7 +297,8 @@ IPA halving (see \S\ref{sec:ipa-detail}):
 \begin{lemma}[Single-round extraction]\label{lem:single-round}
 In a single round of the IPA at depth $j$, given three accepting
 sub-transcripts that share the round's first message $(L_j, R_j)$ but
-have three distinct challenges $u_j$, the extractor recovers the round-$j$
+have three challenges $u_j$ with pairwise distinct squares
+($u_j \ne \pm u_j'$), the extractor recovers the round-$j$
 witness halves $\vec{a}_{\mathrm{lo}}^{(j)}, \vec{a}_{\mathrm{hi}}^{(j)}$
 together with the consistency of the $L_j, R_j$ cross-terms via $3 \times 3$
 Vandermonde inversion (rows $(u_j^{-2}, 1, u_j^2)$), since the folded
@@ -308,8 +311,8 @@ Because the folded relation is quadratic in $u_j$ (the three monomials
 $u_j^{-2}, 1, u_j^2$), treating these as three linear equations in three
 unknowns (the cross-terms and the folded commitment), the system has a
 unique solution because the $3 \times 3$ Vandermonde determinant with rows
-$(u_j^{-2}, 1, u_j^2)$ is non-zero when the three challenges are distinct
-(and $u_j \ne \pm u_j'$, etc.). Excluding the bad challenge collisions adds
+$(u_j^{-2}, 1, u_j^2)$ is non-zero exactly when the squares $u_j^2$ are
+pairwise distinct ($u_j \ne \pm u_j'$). Excluding the bad challenge collisions adds
 a factor $O(1/|\F|)$ to the knowledge error.
 \end{proof}
 
@@ -318,8 +321,9 @@ $k = \log_2 d$ rounds, giving a tree of $3^k = d^{\log_2 3} \approx d^{1.585}$
 leaves --- polynomial in $d$, though more than the $O(d)$ a binary tree
 would cost. In the AGM, each prover invocation is direct (the extractor
 reads the algebraic representation); in the standard model with forking,
-each invocation costs $1/p^*$ expected queries to the prover, yielding
-total cost $O(d^{\log_2 3} \cdot \mathsf{poly}(\lambda) / p^*)$.
+each invocation costs $1/\varepsilon$ expected queries to the prover,
+where $\varepsilon$ is the cheating prover's acceptance probability,
+yielding total cost $O(d^{\log_2 3} \cdot \mathsf{poly}(\lambda) / \varepsilon)$.
 
 \subsection{Concrete versus asymptotic security}
 
@@ -505,13 +509,20 @@ $\sigma$-permuted polynomials $s_i(X)$ with $s_i(\omega^j) =
 \delta_{i'} \cdot \omega^{j'}$ when $\sigma(i, j) = (i', j')$.
 
 Given Fiat--Shamir challenges $\beta, \gamma \in \F$, the prover commits
-to a running-product polynomial $Z_{\mathrm{perm}}(X)$ asserting
+to a running-product polynomial $Z_{\mathrm{perm}}(X)$ asserting, where
+$v_i(X)$ denotes the Lagrange interpolation (\S\ref{sec:plonkish}) of the
+$i$-th column participating in the permutation,
 \[
 \prod_{i, j} \frac{v_i(\omega^j) + \beta\,\delta_i\,\omega^j + \gamma}
 {v_i(\omega^j) + \beta\,s_i(\omega^j) + \gamma} = 1.
 \]
-Two values appear in equality-constrained cells iff this product over the
-trace equals $1$. The verifier checks this by opening $Z_{\mathrm{perm}}$
+The assignment satisfies every equality constraint (cells related by
+$\sigma$ carry equal values) precisely when the denominator factors are a
+permutation of the numerator factors, in which case the product equals $1$
+for every $\beta, \gamma$; conversely, if some constraint is violated, the
+product at the sampled $\beta, \gamma$ equals $1$ with probability at most
+$O(N/|\F|)$ by Schwartz--Zippel, where $N$ is the number of cells
+participating in the permutation. The verifier checks this by opening $Z_{\mathrm{perm}}$
 at $x$ and $\omega x$, verifying the boundary $Z_{\mathrm{perm}}(\omega^0) = 1$
 and the row-by-row update. The per-proof verifier work is $O(m + \log n)$,
 where $m$ denotes the number of columns participating in the permutation.
@@ -575,7 +586,11 @@ Write $d := 2^k$ for the degree bound (equivalently, the number of
 generators); the round count $k = \log_2 d$ reuses the letter $k$ of
 Definition~\ref{def:plonkish}, harmlessly, because in the assembled
 protocol of \S\ref{sec:halo2-full} the committed polynomials have degree
-$< n$, so $d = n = 2^k$ there.
+$< n$, so $d = n = 2^k$ there. The letter $H$ likewise does double duty,
+inherited from two literatures: $H \subset \F$ is the PLONK evaluation
+domain (as in $Z_H$), while $H \in \G$ is the Pedersen blinding generator
+of the \emph{Crypto Guide}; the ambient set ($\F$ versus $\G$)
+disambiguates every occurrence.
 
 \begin{construction}[IPA-based polynomial commitment]\label{const:ipa}
 Let $\G$ be a cyclic group of prime order $p$ in which DL is hard. Choose
@@ -768,19 +783,33 @@ curve and verifying a proof produced over the \emph{other} curve, can:
 \item Witness the next-step claimed $G^{(0)\prime}$ and the next challenges
 $u_1', \dots, u_k'$ as public inputs to the next proof, deferring the MSM
 check.
-\item Fold the deferred MSM checks: by linear combination with a random
-challenge $\rho$, reduce two MSM checks to one,
-$\Acc'' := \Acc + \rho \cdot \Acc'$.
+\item Fold the deferred MSM checks: with a random challenge $\rho$, the
+two claims $G^{(0)} = \Comm(g)$ and $G^{(0)\prime} = \Comm(g')$ reduce to
+the single check $G^{(0)} + [\rho]\, G^{(0)\prime} = \Comm(g + \rho g')$,
+with both challenge tuples retained so that the combined length-$d$
+coefficient vector $\vec{s}(\vec{u}) + \rho\, \vec{s}(\vec{u}\,')$ is
+recomputable; a false claim survives the combination with probability at
+most $1/|\F_p|$. In the recursive instantiation the combined commitment
+is opened at a fresh random point inside the next proof's multipoint
+argument --- each $g_i$ there is evaluable in $O(\log d)$ --- so the
+deferred claim emerging from the next IPA opening is again a single tuple
+of the form of Definition~\ref{def:ipa-acc}; the tuple type is closed
+under accumulation only through this prover-assisted step, not under
+verifier-side linear combination.
 \end{enumerate}
 A single final MSM at the end of the chain validates the entire history.
 The Pasta cycle (\S\ref{sec:cycle}) renders each step native: a
 Vesta-IPA proof's circuit, whose native field is the Vesta scalar field
 $\F_{p_{\Pallas}}$, verifies the previous Pallas-IPA proof, whose group
-elements ($\cmsym$, $\rk$, $\cvsym^{\mathsf{net}}$, the accumulator's
-$G^{(0)}$) have coordinates in exactly that field; the next Pallas proof
+elements (the column and quotient commitments, the $(L_j, R_j)$ pairs,
+the accumulator's $G^{(0)}$) have coordinates in exactly that field; the
+next Pallas proof
 verifies the Vesta proof by the symmetric argument. This cross-curve
 alternation is what enables proof-carrying data without expensive
-non-native field simulation.
+non-native field simulation. The same coincidence is what lets Orchard's
+$\F_{p_{\Pallas}}$-native Action circuit manipulate the Pallas points
+$\cmsym$, $\rk$, and $\cvsym^{\mathsf{net}}$ directly
+(\S\ref{sec:instance}).
 
 Orchard's deployment does not recurse: the verifier of an Action proof
 pays the deferred MSM itself, as part of the standard verification cost.
@@ -877,7 +906,11 @@ polynomials are grouped by their set of query points: most are queried at
 $\{x\}$ alone, while the running products are also queried at $\omega x$
 (and $A'$ at $\omega^{-1} x$), so only a handful of distinct point sets
 arise. Within each group, a challenge $x_1$ folds the polynomials into a
-single combination $q_i(X)$ by powers of $x_1$. For each group, both
+single combination $q_i(X)$ by powers of $x_1$. (The letters $q$ and $f$
+here follow the halo2 book's multipoint-opening notation and are
+unrelated to the selector and fixed-column polynomials of the Setup
+paragraph, which are themselves among the polynomials being folded; the
+index $i$ now ranges over query-point sets, not columns.) For each group, both
 parties interpolate the low-degree polynomial $r_i(X)$ that agrees with
 the claimed evaluations on the group's point set; the quotient
 $f_i(X) := \bigl(q_i(X) - r_i(X)\bigr) / \prod_{z}(X - z)$, with $z$
@@ -956,7 +989,8 @@ and advice columns, but the arguments of \S\ref{sec:perm}--\S\ref{sec:halo2-full
 never single them out. We single them out now, because what an Orchard Action proof
 \emph{asserts} is precisely a statement about its instance values --- the
 anchor, nullifier $\nfsym$, net value commitment $\cvsym^{\mathsf{net}}$,
-randomised key $\rk$, and the $\mathsf{enableSpends}/\mathsf{enableOutputs}$
+randomised key $\rk$, extracted new-note commitment $\cmx$, and the
+$\mathsf{enableSpends}/\mathsf{enableOutputs}$
 flags (the \emph{Orchard Guide}).
 
 \paragraph{The instance polynomial.}
@@ -977,8 +1011,8 @@ Orchard binds the public values through the permutation argument of
 $\sigma$, and the circuit equality-constrains each instance cell to the
 advice cell carrying the corresponding in-circuit value (halo2's
 \texttt{constrain\_instance}). A satisfying assignment therefore exists
-\emph{only} when the advice cells holding $\nfsym$,
-$\cvsym^{\mathsf{net}}$, $\rk$, and the flags equal the public values the
+\emph{only} when the advice cells holding the anchor, $\nfsym$,
+$\cvsym^{\mathsf{net}}$, $\rk$, $\cmx$, and the flags equal the public values the
 verifier supplied. (An alternative design binds public inputs with a
 dedicated gate $q(X)\bigl(a(X) - \pi(X)\bigr) = 0$, where the selector
 $q$ is active exactly on the designated rows; Orchard does not use it ---
