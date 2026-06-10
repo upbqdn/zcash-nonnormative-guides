@@ -62,6 +62,7 @@
 \newcommand{\NoteCommit}{\ensuremath{\mathsf{NoteCommit}}}
 \newcommand{\Sinsemilla}{\ensuremath{\mathsf{Sinsemilla}}}
 \newcommand{\ShortCommit}{\ensuremath{\mathsf{ShortCommit}}}
+\newcommand{\CommitIvk}{\ensuremath{\mathsf{Commit}^{\mathsf{ivk}}}}
 \newcommand{\Extract}{\ensuremath{\mathsf{Extract}}}
 \newcommand{\Acc}{\ensuremath{\mathsf{Acc}}}
 \newcommand{\GroupHash}{\ensuremath{\mathsf{GroupHash}}}
@@ -327,14 +328,15 @@ $\mathsf{SinsemillaCommit}_{\rcm}$ under the domain
 $\mathtt{z.cash:Orchard\text{-}NoteCommit}$. The short forms appear wherever the
 consumer requires a field element instead of a point: $\mathsf{ShortHash}$ in
 the Merkle-tree node hash (\S\ref{sec:tree}), $\ShortCommit$ in the incoming
-viewing key $\ivk$ (\S\ref{sec:orchard-keys}). When we write $\ShortCommit$ with two
-message arguments, as in $\ShortCommit_{\rivk}(\Extract(\aksym), \nksym)$, the
-message $M$ is the concatenation of the $255$-bit little-endian encodings of
-the two field elements ($510$ bits in all);
-for $\ivk$ the domain is $\mathtt{z.cash:Orchard\text{-}CommitIvk}$ and the
-result lies in $\{1, \dots, p_{\Pallas}-1\}$ (we exclude the zero output, which
-cannot occur for a valid key, so that $\ivk$ is a usable
-scalar).
+viewing key $\ivk$ (\S\ref{sec:orchard-keys}). The latter use enters through
+a named instance that fixes the domain and the message encoding:
+\[
+\CommitIvk_{\rivk}(x, y) := \ShortCommit_{\rivk}\bigl(\mathtt{z.cash:Orchard\text{-}CommitIvk},\ \mathrm{LE}_{255}(x) \,\|\, \mathrm{LE}_{255}(y)\bigr),
+\]
+taking two field elements and concatenating their $255$-bit little-endian
+encodings into the $510$-bit message. Its output lies in
+$\{1, \dots, p_{\Pallas}-1\}$ (the zero output cannot occur for a valid key,
+so $\ivk$ is a usable scalar).
 
 \emph{In-circuit cost.} Each round consumes a whole $k$-bit
 chunk via one table lookup of $P[m]$ and two incomplete additions, so a
@@ -436,12 +438,13 @@ The \emph{full viewing key} bundles the three quantities needed to recognise
 and decrypt one's own notes,
 $\fvk := (\aksym, \nksym, \rivk) \in \Ep(\F_{p_{\Pallas}}) \times \F_{p_{\Pallas}} \times \F_{p_{\Vesta}}$. From it derive
 \begin{align*}
-\ivk &:= \ShortCommit_{\rivk}\bigl(\Extract(\aksym),\ \nksym\bigr) \in \{1, \dots, p_{\Pallas}-1\} \subset \F_{p_{\Pallas}}, \\
+\ivk &:= \CommitIvk_{\rivk}\bigl(\Extract(\aksym),\ \nksym\bigr) \in \{1, \dots, p_{\Pallas}-1\} \subset \F_{p_{\Pallas}}, \\
 K &:= \mathrm{I2LEBSP}_{256}(\rivk), \\
 R &:= \mathsf{PRFexpand}\bigl(K,\ \mathtt{0x82} \,\|\, \mathrm{I2LEOSP}_{256}(\aksym) \,\|\, \mathrm{I2LEOSP}_{256}(\nksym)\bigr) \in \{0,1\}^{512}, \\
 (\dk, \ovk) &:= \bigl(R_{[0\,..\,256)},\ R_{[256\,..\,512)}\bigr) \in \{0,1\}^{256} \times \{0,1\}^{256},
 \end{align*}
-where $\ShortCommit$ is from Definition~\ref{def:sinsemilla-commit}. This
+where $\CommitIvk$ is the named $\ShortCommit$ instance of
+\S\ref{sec:sinsemilla}. This
 yields the \emph{incoming} viewing key $\ivk$ (a base-field scalar), the
 \emph{diversifier key} $\dk$, and the \emph{outgoing} viewing key $\ovk$.
 The $\dk/\ovk$ derivation is precisely the following: we split a \emph{single}
@@ -590,7 +593,7 @@ arithmetisation-friendliness is irrelevant here.
 \node[op] at (\gx,-0.95) {$\ask,\nksym,\rivk := \mathsf{PRFexpand}_{\mathsf{sk}}(\mathtt{0x06}/\mathtt{07}/\mathtt{08})$};
 \node[op] at (\gx,-3.8)  {$\aksym := [\ask]\,G^{\mathsf{SpendAuth}}$};
 \node[op] at (\gx,-5.7)  {bundle $\aksym,\nksym,\rivk$ into the tuple $\fvk$};
-\node[op] at (\gx,-7.8)  {$\ivk := \ShortCommit_{\rivk}(\Extract(\aksym),\nksym)$};
+\node[op] at (\gx,-7.8)  {$\ivk := \CommitIvk_{\rivk}(\Extract(\aksym),\nksym)$};
 \node[op] at (\gx,-9.4)  {$(\dk,\ovk) := $ the two halves of\\[1pt]
                           $\mathsf{PRFexpand}_{\rivk}(\mathtt{0x82}\,\|\,\aksym\,\|\,\nksym)$};
 \node[op] at (\gx,-10.6) {$\gd := \GroupHash^{\Pallas}(\mathtt{Orchard\text{-}gd},d)$,\\[1pt]
@@ -670,7 +673,7 @@ because these capabilities are \emph{separable}: one can delegate
 and neither confers the ability to spend.
 
 Two questions of motivation that the bare formulas do not answer. \emph{Why is $\ivk$
-a commitment, $\ShortCommit_{\rivk}(\Extract(\aksym), \nksym)$, rather than a plain
+a commitment, $\CommitIvk_{\rivk}(\Extract(\aksym), \nksym)$, rather than a plain
 hash?} Because $\ivk$ must both bind \emph{and} hide. It binds $\aksym$
 (spend authority) and $\nksym$ (nullifier derivation) to one identity, and
 check A7 below proves the linkage in-circuit by recomputing the commitment
@@ -1270,7 +1273,7 @@ the note owner's: $\rk = \aksym + [\alpha] G^{\mathsf{SpendAuth}}$.
 \noindent
 \textbf{[A7] Address integrity} --- the keys, address, and nullifier key all
 belong to one identity:
-$\ivk = \ShortCommit_{\rivk}(\Extract(\aksym), \nksym)$ and
+$\ivk = \CommitIvk_{\rivk}(\Extract(\aksym), \nksym)$ and
 $\pkd_{\mathrm{old}} = [\ivk] \gd_{\mathrm{old}}$.
 
 \noindent
@@ -1331,7 +1334,7 @@ message chunk costs one table lookup and two incomplete additions. On it rest
 the two composed commitment gadgets the Orchard Book names explicitly ---
 \textsf{NoteCommit}, the in-circuit $\NoteCommit$ proving A1 and A2, and
 \textsf{CommitIvk}, the in-circuit short commitment proving
-$\ivk = \ShortCommit_{\rivk}(\Extract(\aksym),\nksym)$ in A7 --- each bundling the
+$\ivk = \CommitIvk_{\rivk}(\Extract(\aksym),\nksym)$ in A7 --- each bundling the
 Sinsemilla rounds with the bit-decomposition and canonicity checks of their field
 inputs.
 
