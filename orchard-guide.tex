@@ -1578,7 +1578,11 @@ signature on $\mathsf{bvk}$ gives end-to-end balance:
 \begin{proposition}[Balance]\label{prop:balance}
 Any accepted Orchard bundle has
 $\sum_i (v_{\mathrm{old}, i} - v_{\mathrm{new}, i}) = v_{\mathrm{balance}}^{\mathsf{Orchard}}$
-except with probability negligible in the DL hardness of Pallas.
+except with probability negligible in the DL hardness of the Pasta
+curves in the random-oracle model (Vesta for the knowledge soundness of
+the Action SNARK supplying the A4 openings; Pallas for the
+binding-signature extraction and the independence of the
+value-commitment bases).
 \end{proposition}
 
 \begin{proof}[Sketch]

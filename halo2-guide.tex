@@ -158,12 +158,22 @@ verify each PCS opening, and run the PIOP's final accept/reject check.
 \end{construction}
 
 \begin{theorem}[Soundness preservation]\label{thm:piop-snark}
-If $\Pi$ has knowledge soundness $\kappa_{\Pi}$ and the PCS is extractable
+If $\Pi$ has round-by-round (equivalently, state-restoration) knowledge
+soundness $\kappa_{\Pi}$ and the PCS is extractable
 with extraction error $\kappa_{\mathrm{PCS}}$ (the PCS definition of the
 \emph{Crypto Guide}), the compiled SNARK has knowledge soundness
-$O(\kappa_\Pi + Q \cdot \kappa_{\mathrm{PCS}})$ in the random oracle model,
+$O(Q \cdot (\kappa_\Pi + \kappa_{\mathrm{PCS}}))$ in the random oracle model,
 where $Q$ is the adversary's RO-query budget.
 \end{theorem}
+
+The query budget multiplies $\kappa_\Pi$ as well as
+$\kappa_{\mathrm{PCS}}$: step 2 derives the PIOP challenges by
+Fiat--Shamir, so a cheating prover that re-randomises a commitment
+redraws every subsequent challenge, obtaining up to $Q$ independent
+draws of each --- the grinding attack. Round-by-round soundness confines
+this loss to the single factor $Q$; for an $r$-round PIOP with plain
+knowledge soundness only, the naive Fiat--Shamir analysis loses a factor
+$Q^{O(r)}$ (\S\ref{sec:ks}).
 
 This factoring is of considerable utility: research on PIOPs (PLONK, Marlin,
 Spartan, HyperPlonk, $\dots$) proceeds independently of research on
@@ -318,8 +328,8 @@ $u_j^{-2}, 1, u_j^2$), treating these as three linear equations in three
 unknowns (the cross-terms and the folded commitment), the system has a
 unique solution because the $3 \times 3$ Vandermonde determinant with rows
 $(u_j^{-2}, 1, u_j^2)$ is non-zero exactly when the squares $u_j^2$ are
-pairwise distinct ($u_j \ne \pm u_j'$). Excluding the bad challenge collisions adds
-a factor $O(1/|\F|)$ to the knowledge error.
+pairwise distinct ($u_j \ne \pm u_j'$). Excluding the bad challenge collisions contributes an additive
+$O(1/|\F|)$ term per round to the knowledge error.
 \end{proof}
 
 The full extraction requires three accepting transcripts at each of the
@@ -1118,10 +1128,16 @@ with uniform random field elements, at least one more than the number of times t
 verifier will open any single column. Its \(n\) evaluations pin down a degree-\((<n)\) polynomial,
 so with enough independent random values planted on the
 blinding rows the handful the verifier actually queries are jointly uniform and
-independent of the circuit data. The prover blinds the permutation and lookup running products and
-the quotient pieces the same way; Remark~\ref{rem:active-rows} describes
-how the constraint system exempts the blinding rows, so the random values
-never violate an argument.
+independent of the circuit data. The prover blinds the permutation and lookup running products the same
+way; Remark~\ref{rem:active-rows} describes how the constraint system
+exempts the blinding rows, so the random values never violate an
+argument. The quotient pieces admit no such treatment --- $C$ fully
+determines them --- so their commitment blinders, together with the
+blinding-row randomness they inherit through $C$, protect them instead;
+their single collapsed opening at $x$ is the publicly computable value
+$C(x)/(x^n - 1)$. (The deployed implementation also commits a uniformly
+random polynomial alongside the quotient and opens it at the same point,
+keeping the multipoint argument zero-knowledge.)
 
 \paragraph{Why the openings leak nothing.} In each phase the verifier sees only
 (i) hiding commitments --- uniform group elements --- and (ii) a bounded number of
