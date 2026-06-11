@@ -266,8 +266,7 @@ transcripts and runs in expected polynomial time
 (\S\ref{sec:tree-extract}); the looseness arises for the non-interactive
 argument, where the naive Fiat--Shamir analysis of the $\log d$-round
 protocol loses a factor $q^{O(\log d)}$ in the adversary's random-oracle
-query count $q$ --- quasi-polynomial for polynomial $q$ --- a loss the
-AGM analysis of Ghoshal--Tessaro removes.
+query count $q$ --- quasi-polynomial for polynomial $q$.
 The \emph{algebraic group model} (AGM; Fuchsbauer, Kiltz, Loss; CRYPTO
 2018) removes this loss by restricting the adversary's group operations.
 
@@ -558,11 +557,14 @@ Z_{\mathrm{lookup}}(\omega X)(A'(X) + \beta)(S'(X) + \gamma) - Z_{\mathrm{lookup
 \ell_0(X)(A'(X) - S'(X)) &= 0,\\
 (A'(X) - S'(X))(A'(X) - A'(\omega^{-1} X)) &= 0.
 \end{align*}
-The first three force $A'$ to be a permutation of $A$ and to start each
-run aligned with $S'$. The fourth constrains every subsequent row to
-either start a new run ($A'_i = S'_i$) or continue the previous one
-($A'_i = A'_{i-1}$). Inductively, every value of $A$ equals some value of
-$S$.
+The first two constraints, with the boundary conditions of
+Remark~\ref{rem:active-rows}, force $A'$ and $S'$ to be permutations of
+$A$ and $S$ respectively; the third aligns row $0$ ($A'_0 = S'_0$), where
+the wrap-around reference $A'(\omega^{-1}X)$ deprives the fourth
+constraint of force. The fourth constrains every subsequent row either to
+start a new run aligned with $S'$ ($A'_i = S'_i$) or to continue the
+previous one ($A'_i = A'_{i-1}$). Inductively, every value of $A$ equals
+some value of $S'$, hence of $S$.
 
 A random-linear combination with a challenge $\theta$ reduces multi-column
 lookups to single-column:
@@ -675,7 +677,7 @@ g(X; u_1, \dots, u_k) := \prod_{\ell=1}^{k} \bigl(u_\ell^{-1} + u_\ell X^{2^{\el
 
 The essential asymmetry is the following: $g(X)$ has degree $d - 1$ and the verifier can evaluate
 it at $x$ in $O(\log d)$ field operations; but computing
-$G^{(0)} = \Comm(g)$ requires an $O(d)$-size multi-scalar
+$G^{(0)} = \Comm(g; 0)$ requires an $O(d)$-size multi-scalar
 multiplication (MSM). This asymmetry is the seed of the accumulation
 scheme (\S\ref{sec:halo-acc}).
 
@@ -708,8 +710,9 @@ $\{0, 1, 2, 3\}$:
 s_0 &= u_1^{-1} u_2^{-1}, & s_1 &= u_1 u_2^{-1}, & s_2 &= u_1^{-1} u_2, & s_3 &= u_1 u_2.
 \end{align*}
 The verifier evaluates
-$g(x; u_1, u_2) = (u_1^{-1} + u_1 x)(u_2^{-1} + u_2 x^2)$ in two
-multiplications, and computes
+$g(x; u_1, u_2) = (u_1^{-1} + u_1 x)(u_2^{-1} + u_2 x^2)$ in four
+field multiplications ($u_1 x$, $x^2$, $u_2 x^2$, and the product of the
+two factors), and computes
 $G^{(0)} = \sum_{i=0}^{3} [s_i] G_{i+1}$ as a length-4 MSM. The check
 (\ref{eq:ipa-final}) becomes
 \[
@@ -721,9 +724,10 @@ The folding rule for $\vec{G}$ ensures that $G^{(0)}$ is a specific
 linear combination of the original $\vec{G}$ with coefficients $\vec{s}$;
 that the $s_i$ match $\prod_\ell (u_\ell^{-1} \text{ or } u_\ell)$
 according to the binary expansion of $i$ is exactly the closed-form
-identity. The verifier can evaluate $g$ in $\log d$ field operations but
-recomputing $G^{(0)}$ takes $O(d)$ MSM --- the asymmetry the accumulator
-defers.
+identity. The verifier can evaluate $g$ in $O(\log d)$ field operations
+(about $3k-2$: $k$ coefficient products, $k-1$ squarings of $x$, $k-1$
+factor multiplications) but recomputing $G^{(0)}$ takes $O(d)$ MSM ---
+the asymmetry the accumulator defers.
 
 \subsubsection{Knowledge soundness via rewinding}\label{sec:ipa-extract}
 
@@ -748,14 +752,24 @@ the extractor solves for the
 round-$j$ witness halves $\vec{a}_{\mathrm{lo}}^{(j)},
 \vec{a}_{\mathrm{hi}}^{(j)}$ (Lemma~\ref{lem:single-round}).
 
-Extracting the full witness $\vec{a} \in \F_p^d$ requires three
-successful transcripts at the deepest level, then for \emph{each triple},
-three transcripts at the next-shallower level, and so on. The tree has
+Extracting the full witness $\vec{a} \in \F_p^d$ requires three sibling
+transcripts at the deepest level, which yield one round-1 witness; three
+such triples, hung off pairwise distinct challenges at the next-shallower
+round, yield one round-2 witness; and so on, each shallower round
+tripling the requirement. The tree thus has
 $3^k = d^{\log_2 3}$ leaves --- polynomial in $d$ (\S\ref{sec:ks}) ---
 yielding polynomial expected extraction time when $d = \poly(\lambda)$.
-The knowledge error of $O(d / |\F_p|)$ accounts for the probability of
-challenge collisions (e.g.\ $u_j = \pm u_j'$) anywhere in the tree, which
-a union bound renders negligible.
+The theorem's knowledge error of $O(d / |\F_p|)$ does not come from a
+tree-wide union bound. Each of the $k = \log_2 d$ rounds excludes $O(1)$
+bad challenges ($u_j = \pm u_j'$), contributing
+$O(\log d / |\F_p|) \le O(d / |\F_p|)$; Schwartz--Zippel terms of degree
+$d$ account for the rest. Collisions among the resampled challenges
+inside the extractor's $3^k$-leaf tree affect only its expected running
+time --- the extractor rewinds and resamples --- not the knowledge error;
+a naive union bound over the roughly $3^k$ sibling challenge draws would
+bound the tree-wide collision probability by
+$O(d^{\log_2 3} / |\F_p|)$, still negligible, but that is not the source
+of the theorem's figure.
 
 This is the recursive generalisation of special soundness for Schnorr
 (the \emph{Crypto Guide}): a single transcript reveals nothing, but a few
@@ -774,7 +788,11 @@ is to \emph{defer} this MSM and amortise it across many proofs.
 \begin{definition}[Atomic accumulator for IPA]\label{def:ipa-acc}
 An IPA \emph{accumulator instance} is a tuple
 $\Acc := (G^{(0)}, u_1, \dots, u_k) \in \G \times \F_p^k$. It is
-\emph{valid} iff $G^{(0)} = \Comm(g(X; u_1, \dots, u_k))$.
+\emph{valid} iff
+$G^{(0)} = \ip{\vec{s}(\vec{u})}{\vec{G}} = \Comm(g(X; u_1, \dots, u_k);\, 0)$
+--- the deferred claim concerns the unblinded commitment, the blinder
+having been discharged by the $[r^*] H$ term of (\ref{eq:ipa-final}).
+Subsequent unary $\Comm(\cdot)$ abbreviates $\Comm(\cdot\,; 0)$.
 \end{definition}
 
 \begin{theorem}[Accumulation of IPA, BCMS20]\label{thm:bcms20-acc}
@@ -853,7 +871,7 @@ fixed-column polynomials $f_i(X)$, selector polynomials $q_i(X)$,
 permutation polynomials $s_i(X)$, and lookup-table polynomials $S_j(X)$,
 together with the Lagrange basis on $H$, the vanishing polynomial
 $Z_H(X) := X^n - 1$, and the IPA generators $\vec{G} \in \G^n$ and
-$H \in \G$. The commitments to the fixed, selector, and permutation
+$H \in \G$. The commitments to the fixed, selector, permutation, and lookup-table
 polynomials, together with the domain parameters, constitute the
 \emph{verifying key} $\mathsf{vk}$; every part of it is recomputable from
 the public circuit description, which is why no trusted setup exists. To
@@ -905,8 +923,10 @@ whose size accommodates $\deg C$, a small multiple of $n$.
 
 \paragraph{Phase 5 --- evaluation challenge $x$.}
 The verifier returns $x \in \F$. The prover evaluates every committed
-polynomial at $x$, and at $\omega x$ for adjacent-row references, and
-sends these claimed evaluations as field elements. The verifier checks
+polynomial at $x$, and at the rotated points the constraints reference
+--- $\omega x$ for the running products (and for any gate reading an
+adjacent row), $\omega^{-1} x$ for the permuted lookup input $A'$ ---
+and sends these claimed evaluations as field elements. The verifier checks
 the gate equation $C(x) = h(x) Z_H(x)$ as a numerical identity in the
 sent evaluations. This check is meaningful only once the claimed
 evaluations bind to the commitments, which is the role of phases 6--7;

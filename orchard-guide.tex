@@ -164,12 +164,14 @@ built on those primitives, which both the note commitment and the Merkle
 tree use.
 \item \textbf{Keys} (\S\ref{sec:orchard-keys}): the key hierarchy, from
 which the protocol derives addresses, commitments, and nullifiers.
-\item \textbf{The four requirements in turn}: notes (\S\ref{sec:notes}), the
-commitment tree (\S\ref{sec:tree}), nullifiers (\S\ref{sec:nullifier}), and
-value commitments (\S\ref{sec:value}); together with \emph{RedPallas}
-(\S\ref{sec:redpallas}), the signature that authorises a spend.
+\item \textbf{The first three requirements in turn}: notes
+(\S\ref{sec:notes}), the commitment tree (\S\ref{sec:tree}), and nullifiers
+(\S\ref{sec:nullifier}).
 \item \textbf{Transmission} (\S\ref{sec:noteenc}): how the sender delivers
 the new note in-band and the recipient detects it.
+\item \textbf{The fourth requirement}: value commitments
+(\S\ref{sec:value}); together with \emph{RedPallas}
+(\S\ref{sec:redpallas}), the signature that authorises a spend.
 \item \textbf{Assembly} (\S\ref{sec:orchard-walkthrough}): a complete Alice-to-Bob
 payment, end to end.
 \item \textbf{The Action statement} (\S\ref{sec:action-stmt}): the formal
@@ -457,12 +459,14 @@ and decrypt one's own notes,
 $\fvk := (\aksym, \nksym, \rivk) \in \Ep(\F_{p_{\Pallas}}) \times \F_{p_{\Pallas}} \times \F_{p_{\Vesta}}$. From it derive
 \begin{align*}
 \ivk &:= \CommitIvk_{\rivk}\bigl(\Extract(\aksym),\ \nksym\bigr) \in \{1, \dots, p_{\Pallas}-1\} \subset \F_{p_{\Pallas}}, \\
-K &:= \mathrm{I2LEBSP}_{256}(\rivk), \\
+K &:= \mathrm{LE}_{256}(\rivk) \in \{0,1\}^{256}, \\
 R &:= \mathsf{PRFexpand}\bigl(K,\ \mathtt{0x82} \,\|\, \mathrm{I2LEOSP}_{256}(\aksym) \,\|\, \mathrm{I2LEOSP}_{256}(\nksym)\bigr) \in \{0,1\}^{512}, \\
 (\dk, \ovk) &:= \bigl(R_{[0\,..\,256)},\ R_{[256\,..\,512)}\bigr) \in \{0,1\}^{256} \times \{0,1\}^{256},
 \end{align*}
 where $\CommitIvk$ is the named $\ShortCommit$ instance of
-\S\ref{sec:sinsemilla}. This
+\S\ref{sec:sinsemilla} and $\mathrm{LE}_{256}$ the $256$-bit little-endian
+bit encoding of \S\ref{sec:prelim-curve}, giving $K$ the type
+$\{0,1\}^{256}$ that $\mathsf{PRFexpand}$ requires of its key. This
 yields the \emph{incoming} viewing key $\ivk$ (a base-field scalar), the
 \emph{diversifier key} $\dk$, and the \emph{outgoing} viewing key $\ovk$.
 The $\dk/\ovk$ derivation is precisely the following: we split a \emph{single}
@@ -685,17 +689,19 @@ $\mathsf{sk}$ is one-way.
 addressed to the holder and scan the chain, nothing more --- the key suitable
 for an always-online wallet server.
 \item A diversified address $(d, \pkd)$ --- \emph{receive}. A public
-handle anyone can pay; one $\ivk$ generates unboundedly many unlinkable
-addresses, all spendable by the same key.
+handle anyone can pay; one $\ivk$ generates $2^{88}$ mutually unlinkable
+addresses --- one per diversifier index (Definition~\ref{def:keys}),
+practically inexhaustible --- all spendable by the same key.
 \end{itemize}
 
 Of these, only the diversified address is
 \emph{public}. The viewing keys $\fvk, \ivk, \ovk$ are \emph{secret} key
 material --- ``viewing'' names what they let the holder \emph{do} (see
 transactions), not that one may publish them. Disclosing a viewing key
-confers on the recipient the ability to deanonymise every payment to or from the
-wallet, so the owner shares it only deliberately (with an auditor, say) and
-otherwise guards it like any other secret. The ladder is useful precisely
+confers the corresponding visibility on the recipient --- every payment to
+and from the wallet for $\fvk$, incoming payments only for $\ivk$,
+outgoing only for $\ovk$ --- so the owner shares one only deliberately
+(with an auditor, say) and otherwise guards it like any other secret. The ladder is useful precisely
 because these capabilities are \emph{separable}: one can delegate
 ``see incoming'' ($\ivk$) without delegating ``see everything'' ($\fvk$),
 and neither confers the ability to spend.
@@ -1039,13 +1045,15 @@ $(\mathsf{epk}, C_{\mathrm{enc}})$. A second ciphertext
 $C_{\mathrm{out}}$, sealed under the \emph{outgoing cipher key}
 $\mathsf{ock} := \mathrm{BLAKE2b\text{-}256}(\texttt{Zcash\_Orchardock},\
 \ovk \,\|\, \cvsym^{\mathsf{net}} \,\|\, \cmx \,\|\, \mathsf{epk})$ (points in
-$\star$-encoding), carries
+$\star$-encoding; $\cvsym^{\mathsf{net}}$ is the Action's net value
+commitment, \S\ref{sec:value}), carries
 $(\pkd, \mathsf{esk})$ so that the \emph{sender} --- or an auditor holding $\ovk$
 --- can re-derive $\mathsf{s}$ and read the note as well; because $\mathsf{ock}$
 binds the Action's own $\cvsym^{\mathsf{net}}$, $\cmx$, and $\mathsf{epk}$, a $C_{\mathrm{out}}$
 cannot be transplanted onto another Action. The Action publishes
 $(\mathsf{epk}, C_{\mathrm{enc}}, C_{\mathrm{out}})$ alongside
-$\cvsym^{\mathsf{net}}, \nfsym, \rk, \cmx$.
+$\cvsym^{\mathsf{net}}, \nfsym, \rk, \cmx$, with $\rk$ the randomised
+validating key (\S\ref{sec:redpallas}).
 
 \paragraph{Trial decryption (recipient side).} Nothing on chain marks which
 Action pays Bob, so his wallet \emph{trial-decrypts every} Orchard output: for
@@ -1152,8 +1160,9 @@ $\alpha \in \F_{p_{\Vesta}}$,
 The spender publishes the \emph{randomised} validating key $\rk$, not the
 real $\aksym$, and signs with $\rsk$. Because $\alpha$ is fresh per spend,
 $\rk$ is uniformly random and unlinkable across spends, yet remains a valid
-key for the underlying authority. The circuit enforces (check A6) that
-$\rk$ is a re-randomisation of the $\aksym$ bound into the note's address,
+key for the underlying authority. The circuit enforces that
+$\rk$ is a re-randomisation of the witnessed $\aksym$ (check A6) and that
+this $\aksym$ is the key bound into the note's address (check A7),
 so that a valid Action proves the spender knows $\ask$ --- without ever
 revealing $\aksym$.
 
@@ -1238,8 +1247,10 @@ $(\mathsf{anchor}, \cvsym^{\mathsf{net}}, \nfsym_{\mathrm{old}}, \rk, \cmx)$ of
 each Action, a node checks:
 \begin{itemize}[leftmargin=*]
 \item the bundle's \emph{Halo 2 proof} of the Action statement (\S\ref{sec:action-stmt})
---- this forces each spent note to be a genuine tree leaf, the nullifiers
-and new commitments to follow correctly, and the keys to align;
+--- this forces each spent note of nonzero witnessed value to be a genuine
+tree leaf (a zero-value dummy spend skips the membership check by A3's
+gate, by design), the nullifiers and new commitments to follow correctly,
+and the keys to align;
 \item the \emph{anchor} is a Merkle root the node has seen on its accepted main
 chain (\S\ref{sec:tree});
 \item $\nfsym_{\mathrm{old}}$ is \emph{not already} in the nullifier set --- the
@@ -1274,13 +1285,16 @@ private witness, the conjunction:
 \textbf{[A1] Old-note commitment integrity} --- the spent note is
 well-formed:
 \[
-\cmsym_{\mathrm{old}} = \NoteCommit_{\rcm_{\mathrm{old}}}\!\bigl(\gd_{\mathrm{old}}^\star \| \pkd_{\mathrm{old}}^\star \| \mathrm{LE}_{64}(v_{\mathrm{old}}) \| \mathrm{LE}_{255}(\rho_{\mathrm{old}}) \| \mathrm{LE}_{255}(\psi_{\mathrm{old}})\bigr).
+\cmsym_{\mathrm{old}} = \NoteCommit_{\rcm_{\mathrm{old}}}\!\bigl(\gd_{\mathrm{old}}^\star \| \pkd_{\mathrm{old}}^\star \| \mathrm{LE}_{64}(v_{\mathrm{old}}) \| \mathrm{LE}_{255}(\rho_{\mathrm{old}}) \| \mathrm{LE}_{255}(\psi_{\mathrm{old}})\bigr)
 \]
+--- or $\NoteCommit$ returns $\bot$, the specification's escape hatch for
+Sinsemilla's incomplete-addition exceptions (the remark following this
+definition).
 
 \noindent
 \textbf{[A2] New-note commitment integrity}, with $\rho_{\mathrm{new}} := \nfsym_{\mathrm{old}}$:
-$\cmsym_{\mathrm{new}} = \NoteCommit_{\rcm_{\mathrm{new}}}(\ldots)$ and
-$\cmx = \Extract(\cmsym_{\mathrm{new}})$ --- the created note is well-formed
+$\Extract\bigl(\NoteCommit_{\rcm_{\mathrm{new}}}(\ldots)\bigr) \in \{\cmx, \bot\}$
+(with $\Extract(\bot) := \bot$) --- the created note is well-formed
 and its uniqueness seed chains to the spent note's nullifier (Faerie resistance).
 
 \noindent
@@ -1312,6 +1326,7 @@ the note owner's: $\rk = \aksym + [\alpha] G^{\mathsf{SpendAuth}}$.
 \noindent
 \textbf{[A7] Address integrity} --- the keys, address, and nullifier key all
 belong to one identity:
+$\ivk = \bot$, or
 $\ivk = \CommitIvk_{\rivk}(\Extract(\aksym), \nksym)$ and
 $\pkd_{\mathrm{old}} = [\ivk] \gd_{\mathrm{old}}$.
 
@@ -1322,6 +1337,14 @@ $v_{\mathrm{new}} \cdot (1 - \mathsf{enableOutputs}) = 0$. The transaction
 builder sets these bundle-level flags; consensus rules constrain them
 (coinbase transactions, for instance, must set $\mathsf{enableSpends} = 0$).
 \end{definition}
+
+A1, A2, and A7 take the specification's $\bot$-weakened forms because the
+circuit cannot exclude Sinsemilla's incomplete-addition exceptional cases;
+the relation proved is the disjunction, not the plain conjunction. The
+weakening costs only a negligible soundness term: producing a $\bot$ case
+is itself a non-trivial DL relation among the $\GroupHash$ generators (the
+closing sentence of the proof of Proposition~\ref{prop:sins-cr}), so no
+efficient prover exhibits one.
 
 Each of A1--A7 is one entry from the four-requirement map of
 \S\ref{sec:orchard-problem}: A1--A2 represent notes, A3 proves membership,
@@ -1427,10 +1450,14 @@ $(\mathsf{anchor}, \cvsym^{\mathsf{net}}, \nfsym_{\mathrm{old}}, \rk, \cmx, \ldo
 testifies, with overwhelming probability, that the prover knows a
 witness satisfying A1--A9. By knowledge soundness
 of Halo 2 (the \emph{Halo 2 Guide}), an extractor can
-recover this witness from any successful prover. The Orchard security
-properties established below each follow from one or
-more conjuncts of A1--A9 plus the algebraic properties of the
-primitives.
+recover this witness from any successful prover. The soundness-side
+properties below (nullifier uniqueness, spend authority, balance) each
+follow from one or more conjuncts of A1--A9 plus the algebraic properties
+of the primitives; \S\ref{sec:sins-cr} first supplies the primitive
+reduction those arguments share, and privacy rests instead on the zero
+knowledge of the SNARK (\S\ref{sec:halo-zk}) together with the DDH,
+Poseidon-PRF and KDF/AEAD assumptions that
+Theorem~\ref{thm:orchard-e2e}(iv) adds.
 
 \subsection{Reduction of Sinsemilla collision-resistance to DL on Pallas}\label{sec:sins-cr}
 
@@ -1482,10 +1509,14 @@ Poseidon outputs as random scalars under the PRF assumption).
 A collision $\nfsym(\mathbf{n}) = \nfsym(\mathbf{n}')$ in $x$-coordinate
 gives
 $[F_{\nksym}(\rho) + \psi] G^{\mathsf{nf}} + \cmsym = \pm([F_{\nksym}(\rho') + \psi'] G^{\mathsf{nf}} + \cmsym')$,
-a non-trivial linear relation among $G^{\mathsf{nf}}, \cmsym, \cmsym'$. Since
-$\cmsym, \cmsym'$ are themselves Pedersen-style commitments to distinct
-notes with hidden trapdoors, finding such a relation reduces to DL on
-Pallas.
+a non-trivial linear relation among $G^{\mathsf{nf}}, \cmsym, \cmsym'$.
+Expanding $\cmsym, \cmsym'$ via their known openings (extracted by
+knowledge soundness, or supplied by the adversary who forged the notes)
+over the Sinsemilla generators and the blinding base $H_D$ turns this into
+a known non-trivial DL relation among the independent $\GroupHash$ outputs
+$\{G^{\mathsf{nf}}, Q, P[0], \dots, P[2^k - 1], H_D\}$ --- distinctness of
+the notes forces some coefficient mismatch --- and producing such a
+relation reduces to DL on Pallas as in Proposition~\ref{prop:sins-cr}.
 \end{proof}
 
 A5 (nullifier integrity) plus knowledge soundness ensures that
@@ -1614,15 +1645,25 @@ polynomials of degree $n-1$, $n = 2^{11}$; a cheating prover's recombined
 quotient $h \cdot Z_H$ has degree $< d_{\max} n$), overwhelmingly small.
 \item \emph{PCS extractability.} Reduces to DL on the IPA curve
 (the \emph{Halo 2 Guide}), with the accumulation analysis
-(the \emph{Halo 2 Guide}) preserving soundness across recursion.
-\item \emph{Fiat--Shamir soundness in the ROM.} Loses a polynomial
-factor in the prover's RO-query budget (the \emph{Crypto Guide}); for
-$Q \le 2^{80}$ adversary queries this remains negligible.
+(the \emph{Halo 2 Guide}) covering the deferred-MSM batching by which a
+node amortises verification across proofs (\S\ref{sec:circuit}); the same
+analysis would carry soundness across recursion, which Orchard's
+deployment does not use.
+\item \emph{Fiat--Shamir soundness in the ROM.} The \emph{Crypto Guide}'s
+FS theorem covers $\Sigma$-protocols, losing roughly a factor $Q$ in the
+prover's RO-query budget; for the $\log d$-round Halo~2 transcript the
+naive multi-round analysis loses $q^{O(\log d)}$ (the \emph{Halo 2
+Guide}), a bound vacuous at $Q = 2^{80}$. The negligible-error conclusion
+rests on the tighter treatments the \emph{Halo 2 Guide} presents:
+BCMS20's direct ROM+DL analysis, or Ghoshal--Tessaro's tight Fiat--Shamir
+bound in the AGM.
 \end{itemize}
 
 Each step's soundness error is negligible at Orchard's parameters
-($|\F| \approx 2^{254}$, $\lambda = 128$); the union bound across steps
-is itself negligible. Combined with the application-level reductions
+($|\F| \approx 2^{254}$, $\lambda = 127$ under the
+group-order-$\approx 2^{2\lambda}$ convention; effectively $\approx 126$
+bits after the automorphism speedups, the \emph{Crypto Guide}); the union
+bound across steps is itself negligible. Combined with the application-level reductions
 (Propositions \ref{prop:sins-cr}--\ref{prop:balance}), the full chain
 gives:
 
@@ -1730,10 +1771,13 @@ Curve & BN254 & BLS12-381 + Jubjub & Pallas + Vesta \\
 Trusted setup & Per-circuit (six-party MPC) & Per-circuit (large MPC) & None \\
 Recursion-ready & No & No & Yes (via Pasta cycle) \\
 Proof size & \textasciitilde 290 B & 192 B & \textasciitilde 5 kB (one Action) \\
-Verification time & Constant (pairing) & Constant (3 pairings) & $O(\log d)$ amortised \\
+Verification time & Constant (pairing) & Constant (3 pairings) & $O(\log n)$ amortised \\
 \bottomrule
 \end{tabular}
-\caption{Three generations of Zcash shielded-payment proof systems.}\label{tab:zcash-history}
+\caption{Three generations of Zcash shielded-payment proof systems.
+Orchard verification: $O(\log n)$ amortised ($n = 2^{11}$ rows; per-proof
+succinct checks, the linear MSM batched across proofs --- the \emph{Halo 2
+Guide}).}\label{tab:zcash-history}
 \end{table}
 
 The proof size grew between Sapling and Orchard; this is the cost of

@@ -297,7 +297,7 @@ Then
 \[
 a\,s_{i+1}+b\,t_{i+1} = (a s_{i-1}+b t_{i-1}) - q_i\,(a s_i + b t_i) = r_{i-1}-q_i r_i = r_{i+1},
 \]
-so induction preserves \eqref{intmod:eq:eeainv}. When the algorithm terminates with \(r_{n+1}=0\) and \(r_n=d=\gcd(a,b)\), the invariant for \(i=n\) reads \(d=a s_n + b t_n\); output \(u=s_n\), \(v=t_n\). Termination and the value of \(d\) are exactly as in Theorem~\ref{intmod:thm:euclid}, and each step does only a constant amount of extra work.
+so induction preserves \eqref{intmod:eq:eeainv}. When the algorithm terminates with \(r_{n+1}=0\) and \(r_n=d=\gcd(a,b)\), the invariant for \(i=n\) reads \(d=a s_n + b t_n\); output \(u=s_n\), \(v=t_n\). Termination and the value of \(d\) are exactly as in Theorem~\ref{intmod:thm:euclid}, and each step does only a constant amount of extra work. For general inputs, run the algorithm on \((|a|,|b|)\) to obtain \(|a|\,u' + |b|\,v' = d\) (recall \(\gcd(|a|,|b|) = \gcd(a,b)\)) and output \(u = \sgn(a)\,u'\), \(v = \sgn(b)\,v'\), so that \(au + bv = d\).
 \end{proof}
 
 In practice it is convenient to lay the computation out as a table with columns \((r_i,q_i,s_i,t_i)\), computing each new row from the previous two.
@@ -1916,7 +1916,7 @@ verifies \(f(0) = 1\), \(f(1) = 3\), \(f(2) = 7\).
 
 \begin{remark}[The evaluation isomorphism]\label{polynomials:rem:eval-iso}
 Fix \(d + 1\) distinct nodes \(x_0, \dots, x_d\) and let \(V = \{f \in \F[X] :
-\deg f \le d\}\), an \((d{+}1)\)-dimensional \(\F\)-vector space (basis
+\deg f \le d\}\), a \((d{+}1)\)-dimensional \(\F\)-vector space (basis
 \(1, X, \dots, X^d\)). The \emph{evaluation map}
 \[
   \operatorname{ev} \colon V \to \F^{d+1},
@@ -2301,7 +2301,7 @@ For every \(n \ge 1\), \(\sum_{d \mid n} \varphi(d) = n\).
 \end{lemma}
 
 \begin{proof}
-Partition \(\{1,2,\dots,n\}\) according to the value \(g = \gcd(a,n)\). For a fixed divisor \(d \mid n\), the integers \(a\) with \(\gcd(a,n)=d\) are exactly \(a = d b\) with \(1 \le b \le n/d\) and \(\gcd(b, n/d)=1\); there are \(\varphi(n/d)\) of these. Hence \(n = \sum_{d \mid n}\varphi(n/d)\), and as \(d\) ranges over divisors of \(n\) so does \(n/d\), giving \(\sum_{d \mid n}\varphi(d)=n\).
+Partition \(\{1,2,\dots,n\}\) according to the value of \(\gcd(a,n)\). For a fixed divisor \(d \mid n\), the integers \(a\) with \(\gcd(a,n)=d\) are exactly \(a = d b\) with \(1 \le b \le n/d\) and \(\gcd(b, n/d)=1\); there are \(\varphi(n/d)\) of these. Hence \(n = \sum_{d \mid n}\varphi(n/d)\), and as \(d\) ranges over divisors of \(n\) so does \(n/d\), giving \(\sum_{d \mid n}\varphi(d)=n\).
 \end{proof}
 
 \begin{theorem}[Finite subgroups of \(F^\times\) are cyclic]
@@ -2615,7 +2615,7 @@ Let \(G = \langle g\rangle\) be cyclic of order \(N = \prod_{i=1}^{r} q_i^{e_i}\
 \[
 O\!\left(\sum_i e_i\bigl(\log N + \sqrt{q_i}\bigr)\right)
 \]
-group operations; when \(N\) has a large prime factor the \(O(\sqrt{q_{\max}})\) term dominates, whereas for smooth \(N\) every term is polynomial in \(\log N\) and the DLP is easy---the failure mode that Corollary~\ref{numbertheory:cor:prime-order} explains how to avoid.
+group operations; when \(N\) has a large prime factor the \(O(\sqrt{q_{\max}})\) term dominates, whereas for \emph{smooth} \(N\)---\(N\) a product of small primes---every term is polynomial in \(\log N\) and the DLP is easy---the failure mode that Corollary~\ref{numbertheory:cor:prime-order} explains how to avoid.
 \end{theorem}
 
 \begin{proof}[Sketch]
@@ -3018,7 +3018,7 @@ Let \(g\) be a generator of \(\Fq^\times\), which is cyclic of order \(q-1\) by 
 using the standard formula for the order of a power in a cyclic group together with \(m \mid q-1\) (so \(\gcd(m,q-1)=m\)). Thus \(\omega\) is a primitive \(n\)-th root of unity. By \cref{rootsofunity:prp-cyclic}, \(\mu_n(\Fq) = \langle \omega \rangle\) is cyclic of order exactly \(n\).
 
 \smallskip
-\noindent\emph{Count.} In the cyclic group \(\mu_n(\Fq) = \langle \omega \rangle\) of order \(n\), the element \(\omega^k\) has order \(n / \gcd(k,n)\). This equals \(n\) precisely when \(\gcd(k,n) = 1\). The number of \(k \in \{0,1,\dots,n-1\}\) with \(\gcd(k,n)=1\) is by definition \(\varphi(n)\). Hence there are exactly \(\varphi(n)\) primitive \(n\)-th roots of unity. (The coprimality hypothesis \(\gcd(n,q)=1\) is what guarantees \(X^n-1\) is separable, hence has \(n\) distinct roots in any field containing \(\Fq\) (\cref{polynomials:thm:multiple-root}); that all \(n\) of them lie in \(\Fq\) itself is exactly the condition \(n \mid q-1\); if \(p = \operatorname{char}\Fq\) divided \(n\), then \(X^n - 1\) would have repeated roots and \(\mu_n(\Fq)\) would be strictly smaller. But \(n \mid q-1\) already forces \(\gcd(n,q)=1\), since \(\gcd(q-1,q)=1\), so the hypothesis is in fact subsumed.)
+\noindent\emph{Count.} In the cyclic group \(\mu_n(\Fq) = \langle \omega \rangle\) of order \(n\), the element \(\omega^k\) has order \(n / \gcd(k,n)\). This equals \(n\) precisely when \(\gcd(k,n) = 1\). The number of \(k \in \{0,1,\dots,n-1\}\) with \(\gcd(k,n)=1\) is by definition \(\varphi(n)\). Hence there are exactly \(\varphi(n)\) primitive \(n\)-th roots of unity. (The coprimality hypothesis \(\gcd(n,q)=1\) is what guarantees \(X^n-1\) is separable, hence has \(n\) distinct roots in a splitting field over \(\Fq\) (equivalently, in \(\overline{\F}_q\)) (\cref{polynomials:thm:multiple-root}); that all \(n\) of them lie in \(\Fq\) itself is exactly the condition \(n \mid q-1\); if \(p = \operatorname{char}\Fq\) divided \(n\), then \(X^n - 1\) would have repeated roots and \(\mu_n(\Fq)\) would be strictly smaller. But \(n \mid q-1\) already forces \(\gcd(n,q)=1\), since \(\gcd(q-1,q)=1\), so the hypothesis is in fact subsumed.)
 \end{proof}
 
 \begin{remark}\label{rootsofunity:rem-subsumed}
@@ -3333,7 +3333,7 @@ Take \(n = 4\) with primitive \(4\)-th root \(\omega\) (so \(\omega^2 = -1\), \(
   \hat a_0 = E_0 + \omega^0 O_0,\quad \hat a_2 = E_0 - \omega^0 O_0,\quad
   \hat a_1 = E_1 + \omega^1 O_1,\quad \hat a_3 = E_1 - \omega^1 O_1.
 \]
-This uses \(2\) sub-transforms of \(2\) additions each plus \(4\) butterfly operations---far fewer than the \(16\) products of the direct \(4\times4\) matrix multiply, and the gap widens as \(n\) grows.
+This uses \(2\) sub-transforms of \(2\) additions each plus \(2\) butterflies (\(n/2 = 2\) per level, \cref{rootsofunity:rem-butterfly}; together \(2\) twiddle multiplications and \(4\) additions)---far fewer than the \(16\) products of the direct \(4\times4\) matrix multiply, and the gap widens as \(n\) grows.
 \end{example}
 
 \subsection{The role of smooth multiplicative domains in polynomial proof systems}
@@ -3500,7 +3500,7 @@ If either input is \(\mathcal{O}\) the result is the other input, which lies in 
 \end{proof}
 
 \begin{remark}[Complete versus incomplete addition]\label{ellipticcurves:rem-complete}
-The chord formula~\eqref{ellipticcurves:eq-add} is \emph{incomplete}: it fails whenever \(x_1 = x_2\) (the doubling and inverse cases), and an implementation must branch into the case analysis above. \emph{Complete} addition formulas --- single rational expressions valid for \emph{all} pairs of inputs, including \(P = Q\) and \(P = -Q\) --- exist for the curves used here, at the cost of more field multiplications per addition. The distinction is load-bearing in this monograph's later volumes: Halo~2's elliptic-curve gadgets use complete formulas where an adversarially chosen input could otherwise hit an exceptional case, while the Sinsemilla hash function of Orchard deliberately uses the \emph{incomplete} formulas and turns their exceptional cases into constraint violations, so that an exceptional case renders the statement unprovable rather than silently wrong; soundness thus rests on the proof system, while honest inputs avoid the exceptional cases except with negligible probability.
+The chord formula~\eqref{ellipticcurves:eq-add} is \emph{incomplete}: it fails whenever \(x_1 = x_2\) (the doubling and inverse cases), and an implementation must branch into the case analysis above. \emph{Complete} addition formulas --- single rational expressions valid for \emph{all} pairs of inputs, including \(P = Q\) and \(P = -Q\) --- exist for the curves used here, at the cost of more field multiplications per addition. The distinction is load-bearing in this monograph's later volumes: Halo~2's elliptic-curve gadgets use complete formulas where an adversarially chosen input could otherwise hit an exceptional case, while the Sinsemilla hash function of Orchard deliberately uses the \emph{incomplete} formulas nondeterministically: an exceptional case does not violate the constraints but leaves the affected output unconstrained (the prover may choose the intermediate slope freely), which the specification models by letting the hash return \(\bot\) and weakening the proved statement accordingly --- its Merkle path validity check is even permitted to pass on the resulting sentinel values. Safety rests not on the proof system but on the specification's Theorem 5.4.4: any input reaching an exceptional case immediately yields a nontrivial discrete-logarithm relation among the Sinsemilla generators, so under discrete-log hardness on Pallas such inputs are infeasible to find for honest and adversarial provers alike.
 \end{remark}
 \subsection{Identity, inverses, commutativity, and associativity}
 
@@ -3679,7 +3679,7 @@ For the Pasta curves the hypothesis \(\phi(G) \subseteq G\) is automatic, since 
 \end{proposition}
 
 \begin{proof}
-First, \(\phi\) maps the curve to itself: if \(y^2 = x^3 + b\) then \((y)^2 = (\omega x)^3 + b\) because \(\omega^3 = 1\), so \((\omega x, y) \in E\). One can check that \(\phi\) is a homomorphism from the addition formulas~\eqref{ellipticcurves:eq-add}: scaling all \(x\)-coordinates by \(\omega\) and leaving \(y\)-coordinates fixed is compatible with the slope \(\lambda_{\mathrm{line}} = (y_2 - y_1)/(\omega x_2 - \omega x_1) = \omega^{-1}\lambda_{\mathrm{line}}^{\mathrm{old}}\) and with \(x_3 = \lambda^2 - x_1 - x_2 \mapsto \omega^{-2} \lambda^2 - \omega x_1 - \omega x_2 = \omega\lambda^2 - \omega x_1 - \omega x_2 = \omega(\ldots)\), using \(\omega^{-2} = \omega\); a short computation confirms \(\phi(P_1 + P_2) = \phi(P_1) + \phi(P_2)\). Now \(\phi\) has order \(3\) (since \(\omega^3 = 1\) and \(\omega \neq 1\)), and \(\phi^2 + \phi + 1 = 0\) as an endomorphism because \(\omega^2 + \omega + 1 = 0\). Restricted to the cyclic group \(G \cong \Z/r\Z\) (which \(\phi\) preserves by hypothesis), every endomorphism is multiplication by some \(\lambda \in \Z/r\Z\) (as \(\Hom(\Z/r\Z, \Z/r\Z) \cong \Z/r\Z\)); the relation \(\phi^2 + \phi + 1 = 0\) becomes \(\lambda^2 + \lambda + 1 \equiv 0 \pmod r\). Consistently, this congruence is solvable precisely when \(r \equiv 1 \pmod 3\), the hypothesis of the statement.
+First, \(\phi\) maps the curve to itself: if \(y^2 = x^3 + b\) then \((y)^2 = (\omega x)^3 + b\) because \(\omega^3 = 1\), so \((\omega x, y) \in E\). One can check that \(\phi\) is a homomorphism from the addition formulas~\eqref{ellipticcurves:eq-add}: scaling all \(x\)-coordinates by \(\omega\) and leaving \(y\)-coordinates fixed is compatible with the slope \(\lambda_{\mathrm{line}} = (y_2 - y_1)/(\omega x_2 - \omega x_1) = \omega^{-1}\lambda_{\mathrm{line}}^{\mathrm{old}}\) and with \(x_3 = \lambda^2 - x_1 - x_2 \mapsto \omega^{-2} \lambda^2 - \omega x_1 - \omega x_2 = \omega\lambda^2 - \omega x_1 - \omega x_2 = \omega(\ldots)\), using \(\omega^{-2} = \omega\); a short computation confirms \(\phi(P_1 + P_2) = \phi(P_1) + \phi(P_2)\). Moreover \(\phi^2 + \phi + 1 = 0\) as an endomorphism: for affine \(P = (x, y)\) the cubic \(X^3 + b - y^2\) has no \(X^2\) term, so by Vieta its three roots sum to \(0\); since \(\omega^2 + \omega + 1 = 0\) these roots are \(x\), \(\omega x\), \(\omega^2 x\), whence \(P\), \(\phi(P)\), \(\phi^2(P)\) are precisely the intersections (with multiplicity) of the horizontal line \(Y = y\) with \(E\), and by the rule following Definition~\ref{ellipticcurves:def-grouplaw-geom} they sum to \(\mathcal{O}\). Also \(\phi\) has order \(3\): \(\phi^3 = \mathrm{id}\) since \(\omega^3 = 1\), and \(\phi \neq \mathrm{id}\) since \(E(\Fp)\) contains a point with \(x \neq 0\) (at most three points have \(x = 0\)). Restricted to the cyclic group \(G \cong \Z/r\Z\) (which \(\phi\) preserves by hypothesis), every endomorphism is multiplication by some \(\lambda \in \Z/r\Z\) (as \(\Hom(\Z/r\Z, \Z/r\Z) \cong \Z/r\Z\)); the relation \(\phi^2 + \phi + 1 = 0\) becomes \(\lambda^2 + \lambda + 1 \equiv 0 \pmod r\). Consistently, this congruence is solvable precisely when \(r \equiv 1 \pmod 3\), the hypothesis of the statement.
 \end{proof}
 
 \begin{remark}[how GLV speeds up scalar multiplication]\label{ellipticcurves:rem-glv-speedup}

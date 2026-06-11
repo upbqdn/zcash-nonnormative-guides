@@ -449,44 +449,56 @@ must be polynomial.
 \begin{lemma}[Hybrid lemma]\label{model:lem:hybrid}
 Let \(t = t(\lambda)\) be polynomially bounded, and let
 \(H^0_\lambda, H^1_\lambda, \dots, H^{t}_\lambda\) be a sequence of distributions
-(the \emph{hybrids}). Suppose that for every PPT distinguisher \(D\) and every
-index \(i \in \{0,\dots,t-1\}\), the neighbouring advantage
+(the \emph{hybrids}). Suppose that for every PPT distinguisher \(D\) the
+neighbouring advantages
 \[
   \alpha_i(D,\lambda) :=
    \bigl|\Pr[D(H^{i}_\lambda)=1]-\Pr[D(H^{i+1}_\lambda)=1]\bigr|
 \]
-is negligible. Then \(\{H^0_\lambda\}\) and \(\{H^t_\lambda\}\) are computationally
+are \emph{uniformly} negligible: a single negligible function \(\nu\) (depending
+on \(D\)) satisfies \(\alpha_i(D,\lambda) \le \nu(\lambda)\) for all
+\(i \in \{0,\dots,t(\lambda)-1\}\) simultaneously. Equivalently,
+\(\max_{0\le i < t(\lambda)} \alpha_i(D,\lambda) = \negl(\lambda)\), i.e.\
+\(\alpha_{i(\lambda)}(D,\lambda)\) is negligible along \emph{every} index function
+\(i(\lambda)\)---arbitrary, not merely efficiently computable, since the
+maximising index need not be efficient. Then \(\{H^0_\lambda\}\) and
+\(\{H^t_\lambda\}\) are computationally
 indistinguishable, i.e.\ for every PPT \(D\),
 \(\bigl|\Pr[D(H^0_\lambda)=1]-\Pr[D(H^t_\lambda)=1]\bigr| = \negl(\lambda)\).
 \end{lemma}
 
 \begin{proof}
-Fix a PPT distinguisher \(D\). By the triangle inequality applied to the
+Fix a PPT distinguisher \(D\) and let \(\nu\) be the uniform bound the hypothesis
+supplies for \(D\). By the triangle inequality applied to the
 telescoping sum,
 \[
   \bigl|\Pr[D(H^0_\lambda)=1]-\Pr[D(H^t_\lambda)=1]\bigr|
   = \Bigl| \sum_{i=0}^{t-1}\bigl(\Pr[D(H^i_\lambda)=1]-\Pr[D(H^{i+1}_\lambda)=1]\bigr)\Bigr|
-  \leq \sum_{i=0}^{t-1} \alpha_i(D,\lambda).
+  \leq \sum_{i=0}^{t-1} \alpha_i(D,\lambda),
 \]
-The subtlety is that ``each \(\alpha_i\) is negligible'' does not by itself bound a
-sum of \(t(\lambda)\) terms, because the threshold beyond which the \(i\)-th term
-is small could depend on \(i\). An averaging
-(``best-neighbour'') argument removes this dependence. Let
-\(\alpha(D,\lambda) := \max_{0\le i < t}\alpha_i(D,\lambda)\) and let
-\(i^\star(\lambda)\) attain the maximum. Construct a distinguisher \(D^\star\) that, on
-input a sample \(z\), first samples an index \(i\) according to \emph{the
-worst-case selection}---formally, \(D^\star\) is the (non-uniform, or
-uniform-with-sampling) distinguisher that on each \(\lambda\) plays the role of
-\(D\) on the neighbouring pair \((H^{i^\star(\lambda)}, H^{i^\star(\lambda)+1})\).
-Then the per-step assumption applied to \(D^\star\) gives
-\(\alpha(D,\lambda)=\alpha_{i^\star}(D,\lambda) = \negl(\lambda)\). Therefore
-\[
-  \sum_{i=0}^{t-1}\alpha_i(D,\lambda) \leq t(\lambda)\cdot \alpha(D,\lambda)
-  \leq t(\lambda)\cdot \negl(\lambda),
-\]
-which is negligible since \(t\) is
+and the hypothesis bounds the sum by \(t(\lambda)\cdot\nu(\lambda)\), which is
+negligible since \(t\) is
 a polynomial. Hence \(\{H^0\}\approx_c\{H^t\}\).
 \end{proof}
+
+Uniformity in \(i\) is essential, and no argument derives it from the weaker
+hypothesis that each \(\alpha_i\) is negligible for every \emph{fixed} \(i\):
+there the threshold beyond which the \(i\)-th term is small can depend on \(i\),
+and the dependence cannot be removed. A countermodel makes this concrete: take
+\(t(\lambda) = \lambda + 1\) and let \(H^i_\lambda\) be the point mass at \(0\)
+if \(i \le \lambda\) and the point mass at \(1\) otherwise. For every fixed
+\(i\) the advantage \(\alpha_i(D,\lambda)\) is nonzero only at \(\lambda = i\),
+hence negligible; yet \(H^0_\lambda\) and \(H^{t(\lambda)}_\lambda\) are the
+point masses at \(0\) and \(1\), perfectly distinguishable. Applications
+discharge the uniform hypothesis by reduction. When the hybrids are efficiently
+samplable given \((1^\lambda, i)\), the \emph{random-index} distinguisher
+\(D'\) samples \(i\) uniformly from \(\{0,\dots,t-1\}\), embeds its challenge at
+position \(i\), and runs \(D\); writing \(p_i := \Pr[D(H^i_\lambda)=1]\), its
+distinguishing advantage equals
+\(\bigl|\frac{1}{t}\sum_{i=0}^{t-1}(p_i - p_{i+1})\bigr| = |p_0 - p_t|/t\)
+(which is at most \(\frac{1}{t}\sum_i \alpha_i(D,\lambda)\)), so the per-step
+assumption applied to the single machine \(D'\) bounds \(D\)'s total advantage
+by \(t(\lambda)\cdot\mathrm{Adv}(D') = \negl(\lambda)\).
 
 \begin{remark}\label{model:rem:hybrid-poly}
 The hybrid argument is precisely where the ``polynomially many'' constraint earns
@@ -1277,7 +1289,7 @@ The defining feature \(\#\mathrm{Pallas} = q\), the base field of Vesta, and \(\
 
 \begin{proposition}[The Pasta curves meet the criteria]
 \label{assumptions:prop:pasta-secure}
-Pallas and Vesta satisfy criteria (1)--(4) of Definition~\ref{assumptions:def:secure-curve} at \(\lambda \approx 126\); criterion (5) fails for Pallas but is rendered moot by mandatory point validation.
+Pallas and Vesta satisfy criteria (1)--(4) of Definition~\ref{assumptions:def:secure-curve} at \(\lambda \approx 126\); criterion (5) fails for both curves --- neither twist has prime order, and Pallas's twist additionally falls below the SafeCurves \(2^{100}\) twist-attack cost threshold (about \(2^{88}\), versus about \(2^{108}\) for Vesta) --- but the failure is rendered moot by mandatory point validation.
 \end{proposition}
 
 \begin{proof}
@@ -1601,7 +1613,7 @@ using \(p < 2^{L}\) so \(p/2^{L} < 1\). The bias from naive single-block reducti
 \end{proof}
 
 \begin{remark}[The standardised hash-to-field]\label{hash:rem:h2f}
-The IETF ``hash-to-curve'' specification packages Definition~\ref{hash:def:tofield} as a routine \(\mathrm{hash\_to\_field}(m, \mathrm{count})\) that produces \(\mathrm{count}\) field elements, internally calling an \(\mathrm{expand\_message}\) primitive (either \(\mathrm{expand\_message\_xmd}\) built on a fixed-output hash like SHA-256, or \(\mathrm{expand\_message\_xof}\) built on SHAKE) with a mandatory domain-separation tag (DST). The specification sets the \(L\) parameter there to \(\lceil(\lceil\log_{2} p\rceil + k)/8\rceil\) bytes with \(k\) the suite's target security level in bits (for fields of Pasta scale, \(k = 128\), roughly half the field's bit length), exactly realising the slack of Proposition~\ref{hash:prop:tofield}. This is the concrete recipe we use to map identities to field elements and to produce the field elements inside hash-to-curve (\S\ref{hash:sub:tocurve}); the deployed Fiat--Shamir transcript realises the same wide-output-then-reduce principle of Proposition~\ref{hash:prop:tofield} by squeezing a personalised BLAKE2b state (\emph{Halo 2 Guide}).
+The IETF ``hash-to-curve'' specification packages Definition~\ref{hash:def:tofield} as a routine \(\mathrm{hash\_to\_field}(m, \mathrm{count})\) that produces \(\mathrm{count}\) field elements, internally calling an \(\mathrm{expand\_message}\) primitive (either \(\mathrm{expand\_message\_xmd}\) built on a fixed-output hash like SHA-256, or \(\mathrm{expand\_message\_xof}\) built on SHAKE) with a mandatory domain-separation tag (DST). The specification sets the \(L\) parameter there to \(\lceil(\lceil\log_{2} p\rceil + k)/8\rceil\) bytes with \(k\) the suite's target security level in bits (RFC~9380's own suites for \(255\)-bit fields, such as the curve25519 suites, set \(k = 128\), i.e.\ \(L = 48\) bytes; the Zcash suite for Pallas and Vesta is more generous, taking \(k = 256\) so that each element is reduced from a full \(64\)-byte BLAKE2b-512 digest), exactly realising the slack of Proposition~\ref{hash:prop:tofield}. This is the concrete recipe we use to map identities to field elements and to produce the field elements inside hash-to-curve (\S\ref{hash:sub:tocurve}); the deployed Fiat--Shamir transcript realises the same wide-output-then-reduce principle of Proposition~\ref{hash:prop:tofield} by squeezing a personalised BLAKE2b state (\emph{Halo 2 Guide}).
 \end{remark}
 
 \subsection{Hashing to a curve point}\label{hash:sub:tocurve}
@@ -2288,7 +2300,7 @@ In the full multiplicative group \(\Fp^\times\) the Legendre symbol \(\legendre{
 We can now state the passive-security theorem precisely. The natural target is that the shared secret is, to a passive eavesdropper, indistinguishable from a fresh random group element.
 
 \begin{theorem}[Passive security of Diffie--Hellman]\label{keyagreement:thm:passive}
-Let \(\mathsf{DH}_{\G,g}\) be the scheme of Example~\ref{keyagreement:exp:dh-scheme}. Consider a passive adversary who, given the transcript \((A, B) = (g^a, g^b)\) of an honest ephemeral--ephemeral session, must distinguish the true shared secret \(g^{ab}\) from a uniformly random element of \(\G\). Any such distinguisher running in time \(T\) has distinguishing advantage exactly \(\mathrm{Adv}^{\mathrm{ddh}}_{\G,g}(\mathcal{A})\). In particular, under the \textsc{Ddh} assumption the shared secret is pseudorandom, and a passive adversary learns nothing about it that it could not have guessed about a random group element.
+Let \(\mathsf{DH}_{\G,g}\) be the scheme of Example~\ref{keyagreement:exp:dh-scheme}. Consider a passive adversary \(\mathcal{A}\) who, given the transcript \((A, B) = (g^a, g^b)\) of an honest ephemeral--ephemeral session, must distinguish the true shared secret \(g^{ab}\) from a uniformly random element of \(\G\). Any such distinguisher \(\mathcal{A}\) has distinguishing advantage exactly \(\mathrm{Adv}^{\mathrm{ddh}}_{\G,g}(\mathcal{A})\), and the reduction preserves running time exactly. In particular, under the \textsc{Ddh} assumption the shared secret is pseudorandom, and a passive adversary learns nothing about it that it could not have guessed about a random group element.
 \end{theorem}
 
 \begin{proof}
@@ -2380,7 +2392,7 @@ We recall the \emph{authenticated encryption with associated data} (\textsc{Aead
 \[
   \mathsf{Enc}_K(N, \mathrm{ad}, m) = c, \qquad \mathsf{Dec}_K(N, \mathrm{ad}, c) \in \{m\} \cup \{\bot\},
 \]
-\(N\) is a nonce, \(\mathrm{ad}\) is associated data authenticated but not encrypted, and \(\bot\) denotes rejection. Correctness: \(\mathsf{Dec}_K(N, \mathrm{ad}, \mathsf{Enc}_K(N, \mathrm{ad}, m)) = m\). Security is \emph{authenticated-encryption security} (Definitions~\ref{symmetric:def-intctxt} and~\ref{symmetric:def-ae}): ciphertexts are indistinguishable from random under chosen-plaintext attack \emph{and} no adversary can produce a fresh ciphertext that decrypts to anything but \(\bot\) (ciphertext integrity), so confidentiality and integrity hold simultaneously.
+\(N\) is a nonce, \(\mathrm{ad}\) is associated data authenticated but not encrypted, and \(\bot\) denotes rejection. Correctness: \(\mathsf{Dec}_K(N, \mathrm{ad}, \mathsf{Enc}_K(N, \mathrm{ad}, m)) = m\). Security is \emph{authenticated-encryption security} (Definitions~\ref{symmetric:def-intctxt} and~\ref{symmetric:def-ae}): encryptions of any two equal-length messages are indistinguishable under chosen-plaintext attack \emph{and} no adversary can produce a fresh ciphertext that decrypts to anything but \(\bot\) (ciphertext integrity), so confidentiality and integrity hold simultaneously.
 \end{definition}
 
 With these in hand we define the composed scheme. It is a \emph{public-key} encryption scheme: anyone holding the recipient's static public key can encrypt to them, and only the holder of the matching private key can decrypt.
@@ -2623,7 +2635,7 @@ The distribution of the commitment is therefore the uniform distribution on \(\G
 \end{proof}
 
 \begin{theorem}[Computational binding of Pedersen under DLog]\label{commitments:thm:pedersen-binding}
-If the discrete logarithm assumption holds for \(\mathcal{G}\), then the Pedersen commitment is computationally binding. Concretely, from any adversary \(\mathcal{A}\) that breaks binding with probability \(\varepsilon\) one constructs an adversary \(\mathcal{B}\) that computes discrete logarithms with probability \(\varepsilon\) and essentially the same running time.
+If the discrete logarithm assumption holds for \(\mathcal{G}\), then the Pedersen commitment is computationally binding. Concretely, from any adversary \(\mathcal{A}\) that breaks binding with probability \(\varepsilon\) one constructs an adversary \(\mathcal{B}\) that computes discrete logarithms with probability \((1-1/p)\varepsilon \ge \varepsilon - 1/p\) and essentially the same running time.
 \end{theorem}
 
 \begin{proof}
@@ -2641,7 +2653,7 @@ We claim that \(r_1 \neq r_0\). Indeed, if \(r_0 = r_1\) then the right-hand sid
 \]
 so the discrete logarithm of \(H\) to base \(G\) is \(s = (m_0 - m_1)(r_1 - r_0)^{-1} \bmod p\).
 
-Now consider the reduction \(\mathcal{B}\): on a DLog challenge \((\G, p, G, Q)\) where the goal is to find \(\log_G Q\), set \(H := Q\), form \(\mathsf{pp} = (\G, p, G, H)\), and run \(\mathcal{A}(\mathsf{pp})\). The parameters \(\mathsf{pp}\) are distributed almost exactly as in the real scheme: there \(H = [s]G\) for uniform \(s \in \Fp^\times\), so the real \(H\) is uniform over \(\G \setminus \{\mathcal{O}\}\), whereas the challenge \(Q = [a]G\) with uniform \(a \in \Fp\) is uniform over all of \(\G\); the two distributions lie within statistical distance \(1/p = \negl(\lambda)\) (they differ only on the event \(Q = \mathcal{O}\), which occurs with probability \(1/p\)). Moreover, when \(Q = \mathcal{O}\) the relation \([m_0 - m_1]G = [r_1 - r_0]Q = \mathcal{O}\) forces \(m_0 = m_1\), so \(\mathcal{A}\) cannot win in that case anyway. When \(\mathcal{A}\) succeeds, \(\mathcal{B}\) outputs \((m_0 - m_1)(r_1 - r_0)^{-1} \bmod p\), which equals \(\log_G Q\). Thus \(\mathcal{B}\) succeeds whenever \(\mathcal{A}\) does, giving \(\mathrm{Adv}^{\mathrm{dlog}}(\mathcal{B}) = \mathrm{Adv}^{\mathrm{bind}}(\mathcal{A}) = \varepsilon\). Under DLog, \(\varepsilon = \negl(\lambda)\).
+Now consider the reduction \(\mathcal{B}\): on a DLog challenge \((\G, p, G, Q)\) where the goal is to find \(\log_G Q\), set \(H := Q\), form \(\mathsf{pp} = (\G, p, G, H)\), and run \(\mathcal{A}(\mathsf{pp})\). The parameters \(\mathsf{pp}\) are distributed almost exactly as in the real scheme: there \(H = [s]G\) for uniform \(s \in \Fp^\times\), so the real \(H\) is uniform over \(\G \setminus \{\mathcal{O}\}\), whereas the challenge \(Q = [a]G\) with uniform \(a \in \Fp\) is uniform over all of \(\G\); the two distributions lie within statistical distance \(1/p = \negl(\lambda)\) (they differ only on the event \(Q = \mathcal{O}\), which occurs with probability \(1/p\)). Moreover, when \(Q = \mathcal{O}\) the relation \([m_0 - m_1]G = [r_1 - r_0]Q = \mathcal{O}\) forces \(m_0 = m_1\), so \(\mathcal{A}\) cannot win in that case anyway. When \(\mathcal{A}\) succeeds, \(\mathcal{B}\) outputs \((m_0 - m_1)(r_1 - r_0)^{-1} \bmod p\), which equals \(\log_G Q\). Thus \(\mathcal{B}\) succeeds exactly when \(\mathcal{A}\) succeeds in the simulated game, giving \(\mathrm{Adv}^{\mathrm{dlog}}(\mathcal{B}) = (1 - 1/p)\,\mathrm{Adv}^{\mathrm{bind}}(\mathcal{A}) \ge \varepsilon - 1/p\), the factor \(1 - 1/p\) accounting for the event \(Q = \mathcal{O}\), on which \(\mathcal{A}\) wins with probability \(0\); this matches the convention of Theorem~\ref{commitments:thm:vector-props}. Under DLog, \(\varepsilon = \negl(\lambda)\).
 \end{proof}
 
 \begin{remark}[Equivocation with the trapdoor]\label{commitments:rem:equivocation}
@@ -2760,7 +2772,7 @@ Sketch. Two equal-length messages \(M \neq M'\) colliding equate two combination
 \[
   \sum_{j=1}^{k} \bigl[2^{\,k-j}\bigr]\bigl( S(m_j) - S(m'_j) \bigr) \;=\; \mathcal{O},
 \]
-a nontrivial integer relation among finitely many distinct table generators: the messages differ in some position \(j\), there \(S(m_j) \neq S(m'_j)\), and the bounded coefficients \(\pm 2^{\,k-j}\) do not vanish modulo the group order for admissible message lengths (a finite, design-time check). Embedding a DLog challenge in every table generator, exactly as in Theorem~\ref{commitments:thm:vector-props}, recovers the challenge logarithm from the relation.
+a relation whose coefficient on each table generator \(S(v)\) aggregates the positions where \(M\), respectively \(M'\), carries chunk value \(v\): writing \(c_v = \sum_{j \colon m_j = v} 2^{\,k-j} - \sum_{j \colon m'_j = v} 2^{\,k-j}\), the relation reads \(\sum_v [c_v]\, S(v) = \mathcal{O}\) over the \emph{distinct} generators \(S(v)\). Each \(c_v\) is a difference of two subset-sums of the distinct powers \(2^{k-1}, \dots, 2^{0}\), hence an integer of absolute value below \(2^k\). For admissible message lengths (\(2^k\) below the group order, a finite design-time check) \(c_v\) vanishes modulo the group order only if it vanishes as an integer, and by uniqueness of binary expansions \(c_v = 0\) forces the two position sets to coincide; coincidence for every \(v\) forces \(M = M'\) (the messages have equal length \(k\), as assumed). Since \(M \neq M'\), some \(S(v)\) carries a nonzero net coefficient and the relation is nontrivial. Embedding a DLog challenge in every table generator, exactly as in Theorem~\ref{commitments:thm:vector-props}, applied to the relation over the distinct generators with the net coefficients \(c_v\), recovers the challenge logarithm.
 \end{proof}
 
 To turn the hash into a \emph{hiding} commitment one appends a Pedersen blinding term: fix one further independent generator \(H'\) (hashed to the curve, with no known discrete-log relation to \(Q\) or the table) and define
@@ -2790,7 +2802,7 @@ Fix a field \(\F\) and a degree bound \(d\). A \emph{polynomial commitment schem
 Beyond the hiding and binding of the underlying commitment, a PCS must satisfy \emph{evaluation binding}: no PPT prover can produce a commitment \(C\), a point \(z\), and two accepting proofs for distinct claimed values \(y \neq y'\) at \(z\), except with negligible probability. Strong PCSs additionally satisfy an \emph{extractability} (proof-of-knowledge) property: from a successful prover one can extract an actual polynomial \(f\) of degree \(\le d\) consistent with all accepted evaluations.
 \end{definition}
 
-A single committed value \(C\) admits ``probing'' at arbitrary points \(z\) because of the rigidity of polynomials: a nonzero polynomial of degree \(\le d\) has at most \(d\) roots, so two distinct degree-\(\le d\) polynomials agree on at most \(d\) points. Evaluation binding leverages this--if a cheating prover could answer two different values at one point, it would in effect be committing to two different polynomials, which the binding of \(\mathsf{Commit}\) forbids. The central design problem is to make the \emph{evaluation proof} \(\pi\) short and fast to verify. Two families dominate.
+A single committed value \(C\) admits ``probing'' at arbitrary points \(z\) because of the rigidity of polynomials: a nonzero polynomial of degree \(\le d\) has at most \(d\) roots, so two distinct degree-\(\le d\) polynomials agree on at most \(d\) points. Evaluation binding leverages this rigidity: answering a different value at even one point is the behaviour of a prover holding a different polynomial. Making this intuition stand is a separate cryptographic requirement--an accepting evaluation proof is not an opening of \(C\), so evaluation binding does not follow from the binding of \(\mathsf{Commit}\); each construction proves it from its own assumption (\(d\)-strong Diffie--Hellman for KZG, discrete log via the folding extractor for the IPA). The central design problem is to make the \emph{evaluation proof} \(\pi\) short and fast to verify. Two families dominate.
 
 \subsubsection*{The pairing-based family: KZG}
 
@@ -2906,7 +2918,7 @@ The remainder of the section constructs, from scratch, a concrete scheme meeting
 
 \subsection{The hash-and-sign paradigm}\label{signatures:subsec:hashandsign}
 
-Before specialising to Schnorr, we record the single most important structuring idea in practical signature design, since it explains why every scheme below begins by hashing the message. Most ``textbook'' signature mechanisms (RSA, Schnorr's identification-derived signature, ECDSA) are naturally defined only on inputs of a fixed, bounded size: an element of \(\Z_N^\ast\), a scalar in \(\Fq\), a point on a curve. Real messages are arbitrarily long. The \emph{hash-and-sign} paradigm bridges the gap with a cryptographic hash function.
+Before specialising to Schnorr, we record the single most important structuring idea in practical signature design, since it explains why every scheme below begins by hashing the message. Most ``textbook'' signature mechanisms (RSA, Schnorr's identification-derived signature, ECDSA) are naturally defined only on inputs of a fixed, bounded size: an element of \(\Z_N^\ast\) for RSA, a scalar in \(\Fq\) for Schnorr and ECDSA alike. Real messages are arbitrarily long. The \emph{hash-and-sign} paradigm bridges the gap with a cryptographic hash function.
 
 Let \(\Pi' = (\mathsf{KeyGen}, \mathsf{Sign}', \mathsf{Verify}')\) be a scheme with message space \(\mathcal{Y}_\lambda\) and let \(H : \{0,1\}^\ast \to \mathcal{Y}_\lambda\) be drawn from a collision-resistant family (Definition~\ref{hash:def:collision}). \emph{Hash-and-sign} defines \(\mathsf{Sign}(\mathit{sk}, m) = \mathsf{Sign}'(\mathit{sk}, H(m))\) and \(\mathsf{Verify}(\mathit{pk}, m, \sigma) = \mathsf{Verify}'(\mathit{pk}, H(m), \sigma)\), extending the message space to all of \(\{0,1\}^\ast\) at the cost of one hash. The composition preserves EUF-CMA security, by a two-case argument: a forgery on a fresh message \(m^\ast\) either reuses the digest of some queried message---exhibiting a collision in \(H\)---or presents a fresh digest, which is itself a forgery against \(\Pi'\); hence \(\Pr[\mathcal{A} \text{ wins}] \le \mathsf{Adv}^{\mathrm{cr}}_{H} + \mathsf{Adv}^{\mathrm{euf}}_{\Pi'}\).
 
@@ -3398,7 +3410,7 @@ Correctness follows immediately from special soundness once we have two such tra
 \[
   O\!\left(\frac{\varepsilon}{\varepsilon/2 - 1/N}\right) \cdot O\!\left(\frac{1}{\varepsilon}\right) \;=\; O\!\left(\frac{1}{\varepsilon - 2/N}\right),
 \]
-which is the form Definition~\ref{zk:def:knowledge} requires, with \(\kappa = 2/N\) and a polynomial \(q\) absorbing the per-run cost. (Rows with \(\delta_\rho \le 1/N\) contribute no collisions; without the interleaved fresh probes they would trap the extractor for an unbounded expected time, which is why Step~2 alternates rather than insisting on the first row it finds.) Hence \(E\) extracts a witness in expected time \(q(|x|)/(\varepsilon - 2/N)\); the crude factor of two in the threshold \(\delta_\rho \ge \varepsilon/2\) accounts for the extra \(1/N\), and a tighter heavy-row analysis recovers the optimal knowledge error \(\kappa = 1/N\) matching the soundness error, proving the claim.
+which is the form Definition~\ref{zk:def:knowledge} requires, with \(\kappa = 2/N\) and a polynomial \(q\) absorbing the per-run cost. (Rows with \(\delta_\rho \le 1/N\) contribute no collisions; without the interleaved fresh probes they would trap the extractor for an unbounded expected time, which is why Step~2 alternates rather than insisting on the first row it finds.) Hence \(E\) extracts a witness in expected time \(q(|x|)/(\varepsilon - 2/N)\); the crude factor of two in the threshold \(\delta_\rho \ge \varepsilon/2\) is an artefact of this exposition, costing the extra \(1/N\). The optimal knowledge error \(\kappa = 1/N\) of the statement, matching the soundness error, is delivered by the tight extractors in the literature: Damg\aa rd's refined heavy-row analysis in his \(\Sigma\)-protocol lecture notes, and the \(k\)-special-soundness extractor of Attema, Cramer, and Kohl, which achieves knowledge error exactly \((k-1)/N\) --- here \(k = 2\), i.e.\ \(1/N\).
 \end{proof}
 
 \begin{remark}[Knowledge error and the challenge space]\label{zk:rem:challengesize}
@@ -3411,7 +3423,7 @@ The two-transcript notion generalises to protocols with several challenge rounds
 Let \((P,V)\) be a \((2\mu+1)\)-move public-coin protocol for \(R\), in which the prover speaks first and the verifier issues \(\mu\) uniformly random challenges from a space \(\mathcal{C}\). For positive integers \(k_1, \dots, k_\mu\), a \emph{\((k_1, \dots, k_\mu)\)-tree of accepting transcripts} for an instance \(x\) is a tree of depth \(\mu\) in which every node at level \(i\) has \(k_i\) children labelled by \emph{pairwise distinct} challenges for round \(i\), every root-to-leaf path carries the prover messages of one accepting transcript, and transcripts through a common node share their prefix. The protocol is \emph{\((k_1, \dots, k_\mu)\)-special-sound} if a PPT algorithm computes a witness \(w \in R(x)\) from any such tree.
 \end{definition}
 
-A \(\Sigma\)-protocol is the case \(\mu = 1\), \(k_1 = 2\). The extraction argument of Theorem~\ref{zk:thm:special} generalises: rewinding the prover round by round, an extractor assembles the required tree of \(\prod_{i} k_i\) accepting transcripts, so a \((k_1,\dots,k_\mu)\)-special-sound protocol is a proof of knowledge whose knowledge error grows from \(1/|\mathcal{C}|\) to the order of \(\bigl(\sum_i (k_i - 1)\bigr)/|\mathcal{C}|\), and whose extraction cost is polynomial provided the tree size \(\prod_i k_i\) is. Both degradations are benign when \(\mathcal{C}\) is exponentially large, \(\mu\) is logarithmically bounded, and the \(k_i\) are constant, for then the tree size \(\prod_i k_i\) is polynomial. This is the notion under which the inner-product argument's extractor operates (Proposition~\ref{commitments:prop:ipa-props}): each of the \(\log_2 d\) folding rounds contributes one level of branching, and the \emph{Halo~2 Guide} invokes precisely this definition for its IPA extractor.
+A \(\Sigma\)-protocol is the case \(\mu = 1\), \(k_1 = 2\). The extraction argument of Theorem~\ref{zk:thm:special} generalises: rewinding the prover round by round, an extractor assembles the required tree of \(\prod_{i} k_i\) accepting transcripts, so a \((k_1,\dots,k_\mu)\)-special-sound protocol is a proof of knowledge whose knowledge error grows from \(1/|\mathcal{C}|\) to the order of \(\bigl(\sum_i (k_i - 1)\bigr)/|\mathcal{C}|\), and whose extraction cost is polynomial provided the tree size \(\prod_i k_i\) is. Both degradations are benign when \(\mathcal{C}\) is exponentially large, \(\mu\) is logarithmically bounded, and the \(k_i\) are constant, for then the tree size \(\prod_i k_i\) is polynomial. This is the notion under which the inner-product argument's extractor operates (Proposition~\ref{commitments:prop:ipa-props}): each of the \(\log_2 d\) folding rounds contributes one level of branching. The \emph{Halo~2 Guide} instantiates this notion for its IPA extractor with one refinement: because each round's verification equation involves only the monomials \(u^{-2}, 1, u^{2}\), the three challenges at every node must have pairwise distinct \emph{squares} (\(u \neq \pm u'\)), a negligible-fraction exclusion absorbed into the knowledge error.
 
 \begin{proposition}[sHVZK is HVZK]\label{zk:prop:shvzk}
 A \(\Sigma\)-protocol satisfying special HVZK is honest-verifier zero knowledge in the sense of Definition~\ref{zk:def:zk}.
@@ -3789,7 +3801,7 @@ Deployed failures (notably Bitcoin's CVE-2012-2459, where a duplicate-last-node 
 \end{remark}
 
 \begin{remark}[Algebraic hashes and the arithmetic setting]\label{merkle:rem-poseidon}
-When the Merkle path must be verified \emph{inside a zero-knowledge circuit} (Subsection~\ref{merkle:sec-zk}), arithmetic gates over a finite field \(\Fp\) evaluate the compression function, and bit-oriented hashes like SHA-256 become enormously expensive (tens of thousands of constraints per call). One therefore uses an \emph{algebraic} hash --- Poseidon, Rescue, or in Orchard the Sinsemilla function --- whose compression \(h \colon \Fp^2 \to \Fp\) is a low-degree map computable in few constraints. Domain and layer separation then arise not from byte tags but from distinct field constants or distinct affine offsets fed into the permutation; the security argument is identical, with ``collision'' read as a collision of the field-valued compression function. Sinsemilla in particular is collision resistant under a discrete-log assumption, fusing the hashing and the commitment into one Pedersen-like map.
+When the Merkle path must be verified \emph{inside a zero-knowledge circuit} (Subsection~\ref{merkle:sec-zk}), arithmetic gates over a finite field \(\Fp\) evaluate the compression function, and bit-oriented hashes like SHA-256 become enormously expensive (tens of thousands of constraints per call). One therefore uses an \emph{algebraic} hash --- Poseidon, Rescue, or in Orchard the Sinsemilla function --- with compression \(h \colon \Fp^2 \to \Fp\): Poseidon and Rescue are low-degree permutation-based maps computable in few constraints, whereas Sinsemilla is cheap in constraints via lookups and incomplete elliptic-curve additions, not via low degree. For Poseidon and Rescue, domain and layer separation arise not from byte tags but from distinct field constants (initial capacity values or round constants) fed into the permutation; Sinsemilla instead retains the tag mechanism of Definition~\ref{merkle:def-domain} in encoded form: Orchard's MerkleCRH prepends the \(10\)-bit encoded layer index to the two \(255\)-bit child encodings, all layers sharing one instance, while separation between distinct Sinsemilla instances comes from the personalisation string fed to hash-to-curve to derive the instance-specific base point \(Q\) (the generator table \(S\) is shared across instances). The security argument is identical, with ``collision'' read as a collision of the field-valued compression function. Sinsemilla in particular is collision resistant under a discrete-log assumption, fusing the hashing and the commitment into one Pedersen-like map.
 \end{remark}
 
 \subsection{Append-only and incrementally updatable trees}\label{merkle:sec-frontier}
