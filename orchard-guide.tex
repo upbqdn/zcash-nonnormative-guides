@@ -872,19 +872,31 @@ folded up through the layer-tagged hash. The path is therefore a
 deterministic function of $\mathsf{pos}$ and the first $n$ public leaves, and
 of nothing else; the only secret is which leaf is hers.
 
-In practice the wallet computes the path incrementally rather than from
-scratch. While scanning the chain it appends every published $\cmx$ --- its
-own and everyone else's --- to a local copy of the tree. The moment its note
-enters at position $\mathsf{pos}$, all left siblings are determined; the
-wallet stores them once and for all. From then on each block's appends
-advance only the right siblings: whenever a right sibling subtree fills
-completely the wallet records its now-final root, and the single
-partially-filled one is recomputed on demand from the tree's
-\emph{frontier} --- the roots of the maximal complete subtrees along the
-right edge, at most one per level, the compact state from which an
-append-only tree is grown and its root computed. Snapshotting this witness
-at block boundaries lets the wallet emit her path against the anchor of any
-recent block.
+In practice the wallet neither rebuilds the path from the leaves on each
+spend nor retains the whole tree. As it scans, it appends every published
+$\cmx$ --- its own and everyone else's --- but keeps only what a future path
+needs: the nodes from each of its own notes up to the root, the
+complete-subtree roots flanking those paths, and one \emph{checkpoint} per
+block; the rest it prunes (this is the design of librustzcash's
+\textsf{shardtree}). It marks its note's position the moment trial decryption
+succeeds (\S\ref{sec:noteenc}). A checkpoint stores merely the number of
+leaves $n$ present at that block --- the size that fixes the block's anchor;
+the anchor itself is recomputed from the retained nodes on demand, never
+stored.
+
+To produce the path for a spend against a chosen block, the wallet descends
+its retained tree to the marked leaf and, on the way back to the root, reads
+off each sibling subtree's root: a complete subtree contributes its stored
+root, a subtree lying wholly beyond the leaf count $n$ contributes the
+per-level empty root, and the single subtree straddling position $n$ is
+rehashed from its retained nodes. The leaf count enters only as this cutoff
+--- every position $\ge n$ counts as empty --- so one retained tree
+reproduces the path against any block it has checkpointed. Because the
+flanking siblings are \emph{complete-subtree roots}, the wallet never stores
+or rescans their leaves; a freshly restored wallet fetches those roots
+directly --- one $32$-byte root per $2^{16}$-leaf subtree
+($\mathsf{GetSubtreeRoots}$) --- and scans leaf by leaf only the subtree that
+holds its own note.
 
 \begin{figure}[htbp]
 \centering
