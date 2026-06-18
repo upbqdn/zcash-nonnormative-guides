@@ -1074,12 +1074,12 @@ distinguished by a leading domain-separator byte and taking
 $\rho := \nfsym_{\mathrm{old}}$ (as $32$ little-endian bytes) as input ---
 which binds the note's secret randomness to its Action:
 \begin{align*}
-\psi   &:= \mathrm{ToBase}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x09} \,\|\, \rho)\bigr), \\
-\rcm   &:= \mathrm{ToScalar}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x05} \,\|\, \rho)\bigr), \\
-\mathsf{esk} &:= \mathrm{ToScalar}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x04} \,\|\, \rho)\bigr),
+\psi   &:= \mathrm{ToBase}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x09} \,\|\, \rho)\bigr) \in \F_{p_{\Pallas}}, \\
+\rcm   &:= \mathrm{ToScalar}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x05} \,\|\, \rho)\bigr) \in \F_{p_{\Vesta}}, \\
+\mathsf{esk} &:= \mathrm{ToScalar}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x04} \,\|\, \rho)\bigr) \in \F_{p_{\Vesta}},
 \end{align*}
-so $\psi \in \F_{p_{\Pallas}}$ while $\rcm, \mathsf{esk} \in \F_{p_{\Vesta}}$ (the
-last taken nonzero). She then runs a one-shot
+where $\mathsf{esk}$ is redrawn under a fresh $\mathsf{rseed}$ in the rare event
+it vanishes. She then runs a one-shot
 Diffie--Hellman to a \emph{fresh} key:
 \[
 \mathsf{esk} \;\text{(above)}, \quad
