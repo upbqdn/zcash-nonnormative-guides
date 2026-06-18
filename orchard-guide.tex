@@ -914,7 +914,7 @@ reproduces the path against any block it has checkpointed.
 ]
 \node[lf,near]  (L0) at (0,0) {};
 \node[lf,near]  (L1) at (1,0) {};
-\node[lf,route] (L2) at (2,0) {};
+\node[lf,route] (L2) at (2,0) {\scriptsize$L_2$};
 \node[lf,sibl]  (L3) at (3,0) {\scriptsize$L_3$};
 \node[lf,faded] (L4) at (4,0) {};
 \node[lf,faded] (L5) at (5,0) {};
@@ -942,9 +942,10 @@ reproduces the path against any block it has checkpointed.
 \end{tikzpicture}
 \caption{Computation of a Merkle authentication path (drawn at depth $3$; Orchard's
 tree has depth $32$). The leaves are the public note commitments $\cmx$, in
-order. To prove her leaf (orange) is in the tree, Alice recomputes the bold
-route up to the root $R$ --- the \emph{anchor} --- folding in, at each level, the
-sibling hash beside it: the \emph{authentication path} $L_3, A, F$ (blue).
+order. Alice's note sits at leaf $L_2$ (orange); to prove it is in the tree she
+must compute the authentication path of $L_2$, then recompute the bold route
+from $L_2$ up to the root $R$ --- the \emph{anchor} --- folding in, at each
+level, the sibling hash beside it: that path is $L_3, A, F$ (blue).
 Efficiency is the only reason not to hash
 the whole tree: a far subtree enters her path solely through its single root
 (here $F$), so she never downloads its leaves (faded) --- the
@@ -1099,7 +1100,8 @@ the recipient can open.
 with $\pkd = [\ivk]\,\gd$ and $\gd = \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}gd}, d)$
 (\S\ref{sec:orchard-keys}). She forms the \emph{note plaintext}
 $\mathsf{np} = (\mathtt{0x02}, d, v, \mathsf{rseed}, \mathsf{memo})$, where the
-$32$-byte $\mathsf{rseed}$ is the master randomness from which she derives the
+$32$-byte $\mathsf{rseed}$ --- drawn uniformly at random, fresh for each output
+note --- is the master randomness from which she derives the
 note's $\rcm$, $\psi$, and the ephemeral secret $\mathsf{esk}$ below, and
 $\mathsf{memo}$ is a fixed $512$-byte field of sender-chosen data. Each
 derivation is one $\mathsf{PRFexpand}$ call keyed by $\mathsf{rseed}$,
@@ -1234,9 +1236,40 @@ proving that the accounts balance, with no amount revealed. The binding
 signature is RedPallas (\S\ref{sec:redpallas}) instantiated on the base
 $R^{\mathsf{Orchard}}$, the value-commitment randomness base, distinct from
 the spend-authorisation base $G^{\mathsf{SpendAuth}}$. A single signature
-over the whole transaction (concretely, over its ZIP-244 transaction digest)
+over the whole transaction (concretely, over the ZIP-244 \emph{sighash} below)
 additionally binds all its Actions together, so that
 no one can remove or transplant any of them.
+
+\paragraph{The transaction digest (ZIP-244).} The message both Orchard
+signatures sign --- the \emph{sighash} --- is not the raw transaction but a
+non-malleable digest of it, which ZIP-244 assembles as a tree of personalised
+$\mathrm{BLAKE2b\text{-}256}$ hashes, one node per transaction component. Its
+root is
+\[
+\mathsf{sighash} := \mathrm{BLAKE2b\text{-}256}\bigl(\texttt{ZcashTxHash\_} \,\|\, \mathsf{branchid},\ d_{\mathrm{hdr}} \,\|\, d_{\mathrm{trans}} \,\|\, d_{\mathrm{Sap}} \,\|\, d_{\mathrm{Orch}}\bigr),
+\]
+where $\mathsf{branchid}$ is the $4$-byte identifier of the active network
+upgrade --- so a signature is valid only on the fork it was made for --- and
+each $d_\bullet$ is a personalised digest of one pool's data, an absent pool
+hashing the empty string. A purely shielded Orchard payment leaves the
+transparent and Sapling branches empty, and then the $\mathsf{sighash}$
+coincides with the transaction identifier itself.
+
+The Orchard branch commits to the entire bundle,
+\[
+d_{\mathrm{Orch}} := \mathrm{BLAKE2b\text{-}256}\bigl(\texttt{ZTxIdOrchardHash}, d_{\mathrm{C}} \,\|\, d_{\mathrm{M}} \,\|\, d_{\mathrm{N}} \,\|\, \mathsf{flagsOrchard} \,\|\, \mathrm{LE}_{64}(v_{\mathrm{balance}}^{\mathsf{Orchard}}) \,\|\, \mathsf{anchor}\bigr),
+\]
+through three digests that partition every Action's fields: the \emph{compact}
+$d_{\mathrm{C}}$ over $\nfsym$, $\cmx$, $\mathsf{epk}$ and the first $52$ bytes
+$C_{\mathrm{enc}}[0{:}52]$; the \emph{memo} $d_{\mathrm{M}}$ over the $512$-byte
+$C_{\mathrm{enc}}[52{:}564]$; and the \emph{non-compact} $d_{\mathrm{N}}$ over
+$\cvsym^{\mathsf{net}}$, $\rk$, the tail $C_{\mathrm{enc}}[564{:}]$ and
+$C_{\mathrm{out}}$. Folding in every Action's $\nfsym$, $\cmx$,
+$\cvsym^{\mathsf{net}}$, $\rk$ and ciphertexts beside the shared
+$\mathsf{flagsOrchard}$, balance and $\mathsf{anchor}$, the $\mathsf{sighash}$
+pins the exact bundle: no Action can be transplanted into another transaction
+nor any field altered without breaking it. The SpendAuthSig under each $\rk$
+and the binding signature under $\mathsf{bvk}$ both sign this single value.
 
 \subsection{Authorisation of the spend: RedPallas}\label{sec:redpallas}
 
@@ -1247,8 +1280,10 @@ re-randomisable Schnorr signature, provides exactly this.
 
 It is the Schnorr template of the \emph{Crypto Guide} on Pallas, with hash
 $H^*$ (BLAKE2b-512 reduced mod $p_{\Vesta}$). The novel ingredient is
-\emph{key re-randomisation}: given a fresh randomiser
-$\alpha \in \F_{p_{\Vesta}}$,
+\emph{key re-randomisation}: the spender draws a randomiser
+$\alpha \in \F_{p_{\Vesta}}$ uniformly at random, fresh for every Action
+(RedPallas's $\mathsf{GenRandom}$: hash $80$ uniform bytes with $H^*$, which
+makes $\alpha$ statistically uniform on $\F_{p_{\Vesta}}$), and sets
 \[
 \rsk := \ask + \alpha \;\in\; \F_{p_{\Vesta}}, \qquad \rk := \aksym + [\alpha]\,G^{\mathsf{SpendAuth}} = [\rsk]\,G^{\mathsf{SpendAuth}} \;\in\; \Ep(\F_{p_{\Pallas}}).
 \]
