@@ -747,7 +747,9 @@ is a tuple
 where $\mathsf{addr} := (d, \pkd)$ is the recipient's diversified address;
 $v \in \{0, \dots, 2^{64} - 1\}$ is the value in zatoshi;
 $\rho \in \F_{p_{\Pallas}}$ is a per-note uniqueness seed;
-$\psi \in \F_{p_{\Pallas}}$ is sender-chosen randomness; and
+$\psi \in \F_{p_{\Pallas}}$ is randomness the sender fixes through the note
+seed $\mathsf{rseed}$, from which it is derived deterministically
+(\S\ref{sec:noteenc}); and
 $\rcm \in \F_{p_{\Vesta}}$ is the commitment trapdoor.
 \end{definition}
 
@@ -1064,14 +1066,23 @@ the recipient can open.
 with $\pkd = [\ivk]\,\gd$ and $\gd = \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}gd}, d)$
 (\S\ref{sec:orchard-keys}). She forms the \emph{note plaintext}
 $\mathsf{np} = (\mathtt{0x02}, d, v, \mathsf{rseed}, \mathsf{memo})$, where the
-$32$-byte $\mathsf{rseed}$ is the master randomness from which she derives the note's $\rcm$,
-$\psi$, and the ephemeral secret below --- each via a PRF keyed by
-$\mathsf{rseed}$ that takes $\rho$ as input, tying the note's secret
-randomness to its Action --- and $\mathsf{memo}$ is a fixed $512$-byte field
-of sender-chosen data. She then runs a one-shot
+$32$-byte $\mathsf{rseed}$ is the master randomness from which she derives the
+note's $\rcm$, $\psi$, and the ephemeral secret $\mathsf{esk}$ below, and
+$\mathsf{memo}$ is a fixed $512$-byte field of sender-chosen data. Each
+derivation is one $\mathsf{PRFexpand}$ call keyed by $\mathsf{rseed}$,
+distinguished by a leading domain-separator byte and taking
+$\rho := \nfsym_{\mathrm{old}}$ (as $32$ little-endian bytes) as input ---
+which binds the note's secret randomness to its Action:
+\begin{align*}
+\psi   &:= \mathrm{ToBase}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x09} \,\|\, \rho)\bigr), \\
+\rcm   &:= \mathrm{ToScalar}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x05} \,\|\, \rho)\bigr), \\
+\mathsf{esk} &:= \mathrm{ToScalar}\bigl(\mathsf{PRFexpand}_{\mathsf{rseed}}(\mathtt{0x04} \,\|\, \rho)\bigr),
+\end{align*}
+so $\psi \in \F_{p_{\Pallas}}$ while $\rcm, \mathsf{esk} \in \F_{p_{\Vesta}}$ (the
+last taken nonzero). She then runs a one-shot
 Diffie--Hellman to a \emph{fresh} key:
 \[
-\mathsf{esk} \;\text{(derived from } \mathsf{rseed}\text{)}, \quad
+\mathsf{esk} \;\text{(above)}, \quad
 \mathsf{epk} := [\mathsf{esk}]\,\gd, \quad
 \mathsf{s} := [\mathsf{esk}]\,\pkd, \quad
 K_{\mathrm{enc}} := \mathsf{KDF}(\mathsf{s}, \mathsf{epk}),
