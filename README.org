@@ -1,54 +1,82 @@
-#+TITLE: Non-Normative Zcash Guide Materials
+#+TITLE: Non-Normative Zcash Protocol Documentation
 #+AUTHOR: m@rek.onl
 #+OPTIONS: toc:nil num:nil
 
-A four-part, layered monograph on the cryptography of [[https://z.cash/][Zcash]]
-Orchard. Each guide assumes the ones before it and builds toward a precise,
-self-contained account of the Orchard protocol and the Halo 2 proving system it
-relies on.
+Formal, full-depth, self-contained documentation of the [[https://z.cash/][Zcash]]
+protocol — restricted to the parts of Zcash that survive its own roadmap: the
+deployed Orchard core and the protocols growing on top of it. Each volume
+assumes the ones below it and is verified against the protocol specification
+and the deployed implementations.
 
 These materials are *non-normative*: they explain and motivate the
 constructions, but the [[https://zips.z.cash/protocol/protocol.pdf][Zcash
-protocol specification]] remains the sole authority. Where this text and the
-specification disagree, the specification is correct.
+protocol specification]] and the [[https://zips.z.cash/][ZIPs]] remain the sole
+authority. Where this text and the specification disagree, the specification is
+correct.
 
-* The guides
+* The volumes
 
-Read in order; each assumes the previous.
+Layered; read each atop the ones it names.
 
+** Foundations
 1. *Math Guide* (=math-guide.tex=) — the algebraic and number-theoretic
-   groundwork: groups, finite fields, elliptic curves, pairings, and the
-   relevant hardness assumptions.
+   groundwork: groups, finite fields, elliptic curves, and the relevant
+   hardness assumptions.
 2. *Crypto Guide* (=crypto-guide.tex=) — commitments, hashes, signatures,
-   zero-knowledge, and the DLP/CDH/DDH hierarchy, developed only as far as
-   Orchard and Halo 2 require.
+   zero-knowledge, and the DLP/CDH/DDH hierarchy, developed only as far as the
+   upper volumes require.
 3. *Halo 2 Guide* (=halo2-guide.tex=) — PLONKish arithmetisation, the
    permutation, lookup, and vanishing arguments, the inner-product polynomial
-   commitment, and the Halo accumulation trick.
+   commitment, the Halo accumulation trick, and recursive proof composition.
+   - *How Halo 2 Proves* (=halo2-intuition-guide.tex=) — companion: one worked
+     statement carried end to end, every number real.
+
+** Deployed protocol
 4. *Orchard Guide* (=orchard-guide.tex=) — notes, commitments, nullifiers, the
-   commitment tree, the key hierarchy, the Action statement, and the Orchard
-   circuit.
+   commitment tree and authentication paths, the key hierarchy, note
+   encryption, value balance, the Action statement and circuit, and
+   post-quantum security of the deployed stack.
+5. *Wallet Guide* (=wallet-guide.tex=) — the wallet layer: ZIP-32 hierarchical
+   key derivation, unified addresses (ZIP-316), fees (ZIP-317), and the
+   transaction-construction pipeline as deployed in librustzcash.
+
+** Frontier
+6. *Voting Guide* (=voting-guide.tex=) — the shielded coin-voting protocol
+   deployed in Zashi.
+7. *Tachyon Guide* (=tachyon-guide.tex=) — the Tachyon scaling architecture:
+   proof-carrying wallet state, out-of-band payments, oblivious
+   synchronisation. Every claim is classified as /specified/,
+   /designed-but-unspecified/, or /open problem/.
 
 Compiled PDFs are committed alongside the sources.
 
+* Method
+
+Every protocol-level claim is checked against the protocol specification and
+the deployed sources (librustzcash, orchard, zebra, and the relevant wallet
+code) before it is written down, and each volume passes an adversarial review
+(independent verification of numbers, concepts, and cross-references) before
+substantial additions merge. Shared notation and layering rules live in
+[[file:CONVENTIONS.org][CONVENTIONS.org]].
+
 * Scope
 
-The material includes only what lies on the critical path to understanding
-Halo 2 and Orchard; off-path generality is deliberately pruned. Everything that
-does lie on that path is explained in full.
+The material includes only what lies on the critical path to understanding the
+documented protocols; off-path generality is deliberately pruned. Everything
+that does lie on that path is explained in full. Deprecation-bound layers
+(Sprout, Sapling, the transparent layer, the legacy network stack) are
+documented only where the surviving protocols depend on them.
 
 * Building
 
-Each guide compiles independently with [[https://tectonic-typesetting.github.io/][Tectonic]]:
+Each volume compiles independently with
+[[https://tectonic-typesetting.github.io/][Tectonic]]:
 
 #+begin_src sh
-tectonic -Z shell-escape math-guide.tex
-tectonic -Z shell-escape crypto-guide.tex
-tectonic -Z shell-escape halo2-guide.tex
-tectonic -Z shell-escape orchard-guide.tex
+tectonic -Z shell-escape <volume>.tex
 #+end_src
 
-The =-Z shell-escape= flag is required.
+The =-Z shell-escape= flag is required. CI builds every volume on push.
 
 * License
 

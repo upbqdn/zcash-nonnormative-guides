@@ -1,0 +1,24 @@
+name: Build volumes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: wtfjoke/setup-tectonic@v3
+      - name: Build every volume
+        run: |
+          set -e
+          for f in *-guide.tex; do
+            echo "=== $f ==="
+            tectonic -Z shell-escape "$f"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdfs
+          path: "*.pdf"

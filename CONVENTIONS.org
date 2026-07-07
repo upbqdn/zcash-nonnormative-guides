@@ -1,0 +1,80 @@
+#+TITLE: Conventions Registry
+#+OPTIONS: toc:nil num:nil
+
+Shared rules for all volumes. New material follows this file; deviations are
+bugs.
+
+* Layering
+
+- Each standard fact is proved once, in the lowest volume whose scope contains
+  it. Upper volumes cite it; they never re-prove it.
+- Volumes cite each other by italic name and section: /Crypto Guide/,
+  \S\ref-style within a volume, named section across volumes (PDFs are
+  separate documents; no cross-document =\ref=).
+- A volume may forward-reference only its own later sections, never a volume
+  above it.
+
+* Notation
+
+Fixed across all volumes; do not re-derive local variants.
+
+| Object                  | Notation                                          |
+|-------------------------+---------------------------------------------------|
+| Pallas base field       | =\F_{p_{\Pallas}}= (its scalar field = Vesta base) |
+| Vesta base field        | =\F_{p_{\Vesta}}=                                 |
+| Pallas curve/group      | =\Ep(\F_{p_{\Pallas}})=                           |
+| Little-endian bit enc.  | =\mathrm{LE}_k(\cdot)= (k bits)                   |
+| PRF with key k          | =\mathsf{PRFexpand}_{k}(t)= (key as subscript)    |
+| Field reductions        | =\mathrm{ToBase}=, =\mathrm{ToScalar}= (512-bit LE input) |
+| Point compression       | star-encoding =P^\star \in \{0,1\}^{256}=         |
+| Commitments             | =\NoteCommit=, =\ShortCommit=, =\CommitIvk=       |
+| Scalar multiplication   | =[k]\,P=                                          |
+| Byte strings            | =\texttt{monospace}= for literals and tags        |
+
+Domain-separation byte constants appear as =\mathtt{0x..}=.
+
+* Register
+
+- Academic monograph: terse, active voice, no contractions, scholarly ``we''.
+  Mechanism over meta-discourse; motivate, then construct, then prove.
+- Never start a sentence with a bare symbol or code identifier; lead with its
+  kind (``The trapdoor $\rcv$ \dots'', ``Function =foo()= \dots'').
+- Every quantity a volume relies on is either constructed in place, or cited
+  to the exact volume and section that constructs it. ``Derived from X'' with
+  no formula is a defect (the psi rule).
+- Claims about deployed behaviour cite the implementation (crate and file)
+  and the spec section; claims about design-stage protocols are classified
+  /specified/ | /designed-but-unspecified/ | /open problem/.
+- Prose wraps at 80 columns in =.tex= sources; comments and docstrings follow
+  the surrounding file.
+
+* Environments and labels
+
+- Theorem environments are numbered within sections:
+  =theorem/lemma/proposition/corollary= (plain), =definition/construction/=
+  =assumption/remark/example= (definition style).
+- Labels: =sec:=, =def:=, =thm:=, =lem:=, =eq:=, =fig:=, =tab:= prefixes.
+
+* Figures
+
+- TikZ, shared palette: =tierspend= RGB(200,60,60), =tierfull= RGB(210,140,40),
+  =tierin= RGB(60,130,180), =tierrecv= RGB(70,150,90).
+- Every node referenced by a caption is labelled in the figure (the L2/L3
+  rule).
+
+* Verification
+
+- Ground truth: =~/zcash/zips/protocol/protocol.tex=, the ZIPs, and the
+  deployed sources under =~/zcash= (librustzcash, orchard, zebra, wallet
+  SDKs). Verify firsthand before writing; record commit hashes for
+  design-stage sources.
+- Worked examples are computed by script, never by hand, and the script's
+  output is the source of the numbers in the text.
+- Substantial additions pass an adversarial review (independent recomputation
+  of numbers, concept-inversion hunt, cross-reference check) before merging.
+
+* Build
+
+- =tectonic -Z shell-escape <volume>.tex=; compiled PDFs are committed.
+- A volume must compile with zero overfull hboxes and zero unresolved
+  references before commit.
