@@ -520,6 +520,365 @@ polynomial via the IPA-PCS (\S\ref{sec:ipa-detail}). All subsequent
 arguments are \emph{polynomial identities} on these committed polynomials,
 verifiable by querying them at random points.
 
+\subsection{From statement to circuit: arithmetisation in practice}
+\label{sec:statement-to-circuit}
+
+Definition~\ref{def:plonkish} states what a PLONKish circuit \emph{is}; it
+does not say how a statement \emph{becomes} one. This subsection traces that
+passage through the deployed code: a real custom gate (the ECC chip's
+incomplete point addition), two real lookup declarations (the ten-bit range
+check and the Sinsemilla generator table), and the synthesis machinery that
+turns witness data into the column vectors on which every argument of this
+section operates. Our sources are the crates the Orchard circuit is built
+from --- \texttt{halo2\_proofs}~0.3.2 and \texttt{halo2\_gadgets}~0.4.0, as
+resolved by \texttt{orchard}~0.13.1, the version we cite --- with file
+paths relative to each crate's \texttt{src/}.
+
+\paragraph{Shape first, data second.}
+A circuit, to \texttt{halo2\_proofs}, is a type implementing the
+\texttt{Circuit} trait, whose two principal methods split the construction
+into phases (\texttt{halo2\_proofs}, \texttt{plonk/circuit.rs}). The static
+method \texttt{configure} receives a mutable \texttt{ConstraintSystem} and
+declares the \emph{shape}: it mints fixed, advice, and instance columns,
+allocates selectors, registers gates and lookups, and marks columns as
+equality-enabled. No witness exists at this point; \texttt{configure} is not
+even handed an instance of the circuit type. The method \texttt{synthesize}
+runs later, with the data, and fills cells. The split is the proof system's
+division of labour: everything \texttt{configure} declares is public and
+determines the verifying key --- the verifier's entire view of the circuit
+--- while everything \texttt{synthesize} writes into advice cells is the
+prover's witness. (Key generation also runs \texttt{synthesize} once,
+against a witness-free backend that records fixed-cell values, selector
+activations, and copy constraints while ignoring advice; the prover runs the
+same code against a backend that records only advice. One synthesis
+procedure, two observers: \texttt{Assembly} in \texttt{plonk/keygen.rs} and
+\texttt{WitnessCollection} in \texttt{plonk/prover.rs}.)
+
+\paragraph{Gates are queried identities.}
+A call \texttt{meta.create\_gate(name, closure)} defines one custom gate.
+Inside the closure, each \texttt{query\_advice(column, Rotation(r))} --- and
+its fixed and instance analogues --- yields a symbolic handle to ``the value
+of this column $r$ rows below the gate's own row'': the offsets $\omega^r X$
+of Definition~\ref{def:plonkish}, realised at evaluation time by querying
+the column polynomial at $\omega^r x$ (\texttt{halo2\_proofs},
+\texttt{poly/domain.rs}, \texttt{rotate\_omega}). The closure combines the
+handles by field arithmetic into an expression tree
+(\texttt{Expression}: constants, selector nodes, queried cells, negations,
+sums, products, scalings), one tree per constraint, and the helper
+\texttt{Constraints::with\_selector} multiplies every constraint $c$ by the
+gate's selector expression, storing $q \cdot c$
+(\texttt{plonk/circuit.rs}). This helper is the mechanical origin of the
+``selector times polynomial'' shape of every deployed gate but one --- the
+generalisation, gate by gate, of the fixed vanilla-PLONK equation of
+\S\ref{sec:plonkish}. (The exception, the ECC chip's witness-point gate,
+multiplies by hand: its $(q \cdot x) \cdot (y^2 - x^3 - 5)$ and the
+helper's $q \cdot \bigl( x \cdot (y^2 - x^3 - 5) \bigr)$ are equal
+polynomials but different expression trees, and the pinned verifying key
+freezes the tree; \texttt{halo2\_gadgets},
+\texttt{ecc/chip/witness\_point.rs}.) A selector is virtual at this
+stage: a named boolean
+column, off everywhere by default, enabled row by row during synthesis. At
+key generation, \texttt{compress\_selectors} packs the selectors into
+genuine fixed columns --- several to a column wherever the circuit's degree
+bound leaves headroom --- and rewrites every selector node into a
+fixed-column expression (\texttt{plonk/circuit.rs},
+\texttt{plonk/keygen.rs}). The deployed Action circuit declares $56$
+selectors, whose compressed columns are among the $29$ fixed columns pinned
+in its verifying key; the pinned count is the post-compression one
+(\texttt{orchard}~0.13.1, \texttt{src/circuit\_description}; since 0.14
+the file lives at \texttt{src/circuit\_data/\allowbreak
+circuit\_description\_fixed}).
+
+\paragraph{Regions, the layouter, and wiring.}
+Data enters at synthesis through a \texttt{Layouter}. A chip requests a
+\emph{region} --- a small rectangular window of cells addressed by relative
+offsets --- fills it cell by cell, and leaves the choice of the region's
+absolute starting row to the \emph{floor planner}
+(\texttt{halo2\_proofs}, \texttt{circuit.rs}). Values flow between regions
+not by position but by \emph{copy constraints}: the call
+\texttt{enable\_equality(column)} enrols a column in the single global
+permutation of \S\ref{sec:perm}, and \texttt{constrain\_equal} --- or the
+assign-and-constrain combination \texttt{copy\_advice} --- merges the two
+cells' cycles in that permutation
+(\texttt{plonk/\allowbreak permutation/\allowbreak keygen.rs}; the halo2 book's
+\emph{Permutation argument} chapter documents the cycle-merging). Public
+inputs bind the same way, an advice cell copy-constrained to an instance
+cell (\S\ref{sec:instance}). The deployed circuit uses the measuring
+\texttt{V1} floor planner, which records every region's shape in a
+witness-free pass, sorts the regions by advice area, and first-fits the
+largest ones first (\texttt{circuit/\allowbreak
+floor\_planner/\allowbreak v1.rs}; the sort and first-fit in
+\texttt{v1/\allowbreak strategy.rs}); the
+\texttt{orchard} crate additionally pins the planner's sort to a vendored
+Rust~1.56.1 \texttt{pdqsort} (feature
+\texttt{floor-planner-v1-legacy-pdqsort}) so that the layout --- and with it
+the consensus verifying key --- is identical across platforms and
+toolchains.
+
+\paragraph{A deployed gate: incomplete point addition.}
+The ECC chip's incomplete-addition gate (\texttt{halo2\_gadgets},
+\texttt{ecc/chip/add\_incomplete.rs}) computes $P + Q = R$ on Pallas under
+the promises $P, Q \neq \mathcal{O}$ and $x_p \neq x_q$. Its configuration
+is one selector $q_{\text{add-incomplete}}$ and four equality-enabled advice
+columns \texttt{x\_p}, \texttt{y\_p}, \texttt{x\_qr}, \texttt{y\_qr}; the
+gate queries $x_p, y_p, x_q, y_q$ at the current row and $x_r, y_r$ at the
+next row of the \emph{same} two columns \texttt{x\_qr}, \texttt{y\_qr}
+(hence their names: $Q$ on the selector row, $R$ below it). The two
+constraints, named \texttt{x\_r} and \texttt{y\_r} in the source, are
+\begin{align}
+q_{\text{add-incomplete}} \cdot
+  \bigl( (x_r + x_q + x_p)\,(x_p - x_q)^2 - (y_p - y_q)^2 \bigr) &= 0,
+  \label{eq:add-inc-xr}\\
+q_{\text{add-incomplete}} \cdot
+  \bigl( (y_r + y_q)\,(x_p - x_q) - (y_p - y_q)\,(x_q - x_r) \bigr) &= 0.
+  \label{eq:add-inc-yr}
+\end{align}
+These are the affine chord formulas (the \emph{Math Guide}) with the slope
+eliminated: for $x_p \neq x_q$ they are equivalent to
+$x_r + x_q + x_p = \lambda^2$ and $y_r + y_q = \lambda\,(x_q - x_r)$ with
+$\lambda := (y_p - y_q)/(x_p - x_q)$, multiplied through by
+$(x_p - x_q)^2$ and $(x_p - x_q)$ respectively to clear the denominators
+(the halo2 book's \emph{Addition} chapter records the same clearing). The
+raw degrees are three and two; with the selector factor, four and three ---
+well inside the deployed circuit's constraint-degree bound of nine (below).
+The \emph{complete}-addition companion gate, which branches over the
+identity, doubling, and inverse cases that this gate excludes, needs twelve
+constraint polynomials of degree up to six and five auxiliary witness cells
+per invocation (\texttt{ecc/chip/add.rs}); incompleteness is a bargain
+wherever its promises can be kept.
+
+Synthesis for one invocation (\texttt{assign\_region}, same file) makes the
+witness path concrete. The chip enables the selector at the region's row
+$i$; copies the four input coordinates into that row with
+\texttt{copy\_advice}, which both assigns each cell and copy-constrains it
+back to its source; computes, \emph{out of circuit},
+\[
+\lambda = \frac{y_q - y_p}{x_q - x_p}, \qquad
+x_r = \lambda^2 - x_p - x_q, \qquad
+y_r = \lambda\,(x_p - x_r) - y_p;
+\]
+and assigns $x_r, y_r$ into row $i+1$ (Table~\ref{tab:add-inc-region}). The
+slope $\lambda$ is never written to any cell: the prover uses it to compute
+the answer, and the committed
+identities~\eqref{eq:add-inc-xr}--\eqref{eq:add-inc-yr} verify the answer
+without it. The division is not even performed here --- coordinates are
+carried as deferred fractions (\texttt{halo2\_proofs},
+\texttt{plonk/assigned.rs}), and every denominator falls to a single batch
+inversion when synthesis ends (\texttt{plonk/prover.rs},
+\texttt{batch\_invert\_assigned}). The output cells are returned as a new
+non-identity point with no further on-curve check --- sound because, once
+the call site guarantees distinct $x$-coordinates on non-identity inputs,
+the two identities force $R = P + Q$, a non-identity curve point.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{l cccc c}
+\toprule
+row & \texttt{x\_p} & \texttt{y\_p} & \texttt{x\_qr} & \texttt{y\_qr} &
+  $q_{\text{add-incomplete}}$ \\
+\midrule
+$i$     & $x_p$ & $y_p$ & $x_q$ & $y_q$ & $1$ \\
+$i+1$   & --    & --    & $x_r$ & $y_r$ & $0$ \\
+\bottomrule
+\end{tabular}
+\caption{The incomplete-addition region: two rows by four advice columns
+(\texttt{halo2\_gadgets}, \texttt{ecc/chip/add\_incomplete.rs}). The four
+input cells $x_p, y_p, x_q, y_q$ on the selector row $i$ are
+copy-constrained to the cells they came from; the result cells $x_r, y_r$
+occupy the \texttt{x\_qr}, \texttt{y\_qr} columns of row $i+1$, where the
+gate's \texttt{Rotation::next()} queries find them. Dashes mark cells the
+gate does not use.}
+\label{tab:add-inc-region}
+\end{table}
+
+\paragraph{Incompleteness, and where it is discharged.}
+Reading the two polynomials at the excluded inputs shows exactly what
+``incomplete'' costs. If $Q = -P \neq \mathcal{O}$ (so $x_p = x_q$ and
+$y_p = -y_q \neq 0$), constraint~\eqref{eq:add-inc-xr} collapses to
+$-(2 y_p)^2 \neq 0$: no assignment satisfies the gate --- a completeness
+failure, never a soundness one. If $Q = P$, both polynomials vanish
+identically and $(x_r, y_r)$ is \emph{unconstrained}: a reachable doubling
+would let the prover claim any result. If an input were the identity in the
+gadget's $(0,0)$ affine encoding, the constraints would accept a garbage
+output. The deployed circuit discharges the three exclusions in three
+different places. Non-identity travels with the type: the gate's inputs
+are \texttt{NonIdentityEccPoint} values. A fresh point entering the chip
+is witnessed under the gate
+\[
+q_{\text{point-non-id}} \cdot \bigl( y^2 - x^3 - 5 \bigr) = 0
+\qquad
+(\texttt{halo2\_gadgets}, \texttt{ecc/chip/witness\_point.rs}),
+\]
+which $(0,0)$ cannot satisfy because $5$ is not a square and $-5$ is not a
+cube in $\F_{p_{\Pallas}}$ (the halo2 book's \emph{Addition} chapter) ---
+but no fresh witness ever reaches incomplete addition. In the deployed
+circuit the incomplete-addition gate fires only inside fixed-base scalar
+multiplication (\texttt{ecc/chip/mul\_fixed.rs}), which sums precomputed
+windowed multiples $[(k+2) \cdot 8^w]B$ of a fixed base $B$. There the
+addends are assembled by the type's unchecked constructor
+(\texttt{from\_coordinates\_unchecked}) and pinned instead to the
+precomputed window table by \texttt{mul\_fixed}'s own coordinate gates
+(\texttt{coords\_check}, same file): the $x$-coordinate must equal a
+degree-seven polynomial in the window value whose fixed coefficients
+interpolate the window's eight table $x$-coordinates, and the
+$y$-coordinate must satisfy $y + z_w = u^2$ against a per-window fixed
+$z_w$ and a witnessed $u$, alongside an on-curve check --- together
+pinning the point to the table entry selected by the window digit, and no
+entry of the table is the identity. The running accumulator is a sum of
+such entries under this very gate; the type carries the non-identity
+guarantee from either construction site to the gate, which re-checks
+nothing. The distinctness $x_p \neq x_q$ is enforced by no constraint at
+all; it too is structural: the window tables store $[(k+2) \cdot 8^w]B$
+rather than the naive $[(k+1) \cdot 8^w]B$ precisely because the naive
+offset admits a window collision that produces the fatal doubling (the
+halo2 book's \emph{Fixed-base scalar multiplication} chapter).
+Prover-side, \texttt{assign\_region} rejects a \emph{known} bad witness
+with an error --- a developer diagnostic, not a constraint. (The
+circuit's other incomplete additions --- the variable-base
+ladder's fused double-and-add rounds and Sinsemilla's two per chunk, the
+ones the \emph{Orchard Guide}'s gadget survey counts --- are separate gates
+built on the same discipline; \texttt{ecc/chip/mul/\allowbreak incomplete.rs},
+\texttt{sinsemilla/chip.rs}.)
+
+\paragraph{Non-algebraic relations become lookups.}
+A gate can assert only polynomial identities. ``This value has ten bits''
+and ``this point is the $j$-th Sinsemilla generator'' are not identities but
+set memberships, and the circuit declares them as lookups: a call
+\texttt{meta.lookup(closure)} returns pairs of an input \emph{expression}
+and a table column, and pushes one lookup argument onto the constraint
+system (\texttt{halo2\_proofs}, \texttt{plonk/circuit.rs}). Each
+declaration is one instance of the argument of \S\ref{sec:lookup}, the
+input expressions playing $A_0, \dots, A_{m-1}$ and the table columns
+$S_0, \dots, S_{m-1}$. The deployed circuit carries exactly three
+(\texttt{orchard}~0.13.1, \texttt{src/circuit\_description}): one shared
+range-check declaration, and the Sinsemilla generator declaration twice ---
+once per Sinsemilla chip instance, each on its own half of the ten advice
+columns.
+
+All three consume the same table. Loaded once at synthesis, it holds, for
+$0 \le j < 2^{10}$,
+\[
+\text{row } j:\quad \bigl( j,\; X(S[j]),\; Y(S[j]) \bigr),
+\qquad
+S[j] :=
+\GroupHash\bigl(\texttt{"z.cash:SinsemillaS"},\, \mathrm{LE}_{32}(j)\bigr),
+\]
+in three table columns $(t_{\mathrm{idx}}, t_x, t_y)$; the generators ship
+as precomputed constants that the crate's own tests re-derive from the
+hash (\texttt{sinsemilla} crate, \texttt{src/sinsemilla\_s.rs};
+\texttt{halo2\_gadgets}, \texttt{utilities/\allowbreak
+lookup\_range\_check.rs} for the
+loading). After the assignment, the layouter fills every remaining usable
+row of each table column with that column's row-$0$ value
+(\texttt{halo2\_proofs}, \texttt{circuit/\allowbreak
+table\_layouter.rs}); a defaulted
+input row therefore still matches a genuine table row, and the type
+\texttt{TableColumn} hides its underlying fixed column exactly so that no
+chip can bypass this default-filling.
+
+The range check is one declaration serving two modes
+(\texttt{halo2\_gadgets},
+\texttt{utilities/\allowbreak lookup\_range\_check.rs}):
+\begin{equation}
+\label{eq:lookup-range}
+q_{\mathrm{lookup}} \cdot \Bigl(
+  q_{\mathrm{running}} \cdot \bigl( z_i - 2^{10}\, z_{i+1} \bigr)
+  + (1 - q_{\mathrm{running}}) \cdot z_i
+\Bigr)
+\;\longmapsto\; t_{\mathrm{idx}},
+\end{equation}
+with $z_i$ and $z_{i+1}$ the running-sum advice column at the current and
+next rotations. With $q_{\mathrm{running}} = 1$ the input is a running-sum
+step: the prover witnesses $z_{i+1} = (z_i - a_i) \cdot 2^{-10}$ on
+successive rows, the expression recovers the limb
+$a_i = z_i - 2^{10} z_{i+1}$, and membership in $t_{\mathrm{idx}} =
+\{0, \dots, 2^{10}-1\}$ asserts that each limb of the decomposition has ten
+bits; a \emph{strict} decomposition additionally copy-constrains the final
+$z$ to the constant $0$, range-constraining the decomposed element to
+$10w$ bits for $w$ limbs. With $q_{\mathrm{running}} = 0$ the cell itself
+is looked up (checks of fewer than ten bits add a small bit-shift gate in
+the same file). Every range check in the Action circuit funnels through
+this one declaration, on a single advice column.
+
+The Sinsemilla declaration is the three-column instance
+(\texttt{halo2\_gadgets},
+\texttt{sinsemilla/\allowbreak chip/\allowbreak generator\_table.rs}):
+\begin{equation}
+\label{eq:lookup-sinsemilla}
+\Bigl(\;
+q_{S1} \cdot m,\;\;
+q_{S1} \cdot x_p + (1 - q_{S1}) \cdot X(S[0]),\;\;
+q_{S1} \cdot y_p + (1 - q_{S1}) \cdot Y(S[0])
+\;\Bigr)
+\;\longmapsto\;
+(t_{\mathrm{idx}},\, t_x,\, t_y),
+\end{equation}
+where $m = z_i - 2^{10} \cdot q_{\mathrm{run}} \cdot z_{i+1}$ recovers the
+ten-bit message word from the hash's own running-sum decomposition (with
+$q_{\mathrm{run}} := q_{S2} - q_{S2}(q_{S2} - 1)$, an expression in a fixed
+column $q_{S2} \in \{0, 1, 2\}$ that evaluates to $1$ on the interior rows
+of a message piece and to $0$ on final rows, where the trailing running sum
+is implicitly zero), and where $y_p$ is not a witnessed cell at all but the
+derived expression $Y_A \cdot 2^{-1} - \lambda_1 (x_A - x_p)$ over the
+chip's double-and-add columns (\texttt{ecc/chip/mul/\allowbreak
+incomplete.rs} supplies
+$Y_A := (\lambda_1 + \lambda_2)(x_A - x_R)$ and
+$x_R := \lambda_1^2 - x_A - x_p$). Lookup inputs, in other words, may be
+arbitrary expressions over queried cells, not merely cells; the chip
+proves that the generator it is adding \emph{is} $S[m]$ without ever
+spending an advice cell on $y_{S[m]}$. The $(1 - q_{S1})$ branches default
+every row on which the chip is inactive to table row $0$, so the membership
+assertion of \S\ref{sec:lookup} holds on all rows. One API restriction is
+visible here: the selectors gating lookup inputs
+($q_{\mathrm{lookup}}$, $q_{\mathrm{running}}$, $q_{S1}$) must be declared
+as \texttt{complex\_selector}s --- simple selectors are reserved for gates,
+where the key-generation compression is licensed to rewrite them
+(\texttt{halo2\_proofs}, \texttt{plonk/circuit.rs}).
+
+\paragraph{The handoff.}
+When \texttt{synthesize} returns, the construction has produced nothing
+exotic: every column --- advice, fixed, instance --- is a vector of
+$n = 2^k$ field elements; in the advice columns the deferred fractions are
+resolved by one batch inversion and the reserved trailing rows filled with
+blinding randomness (\S\ref{sec:halo-zk}, Remark~\ref{rem:active-rows}).
+The prover commits to
+each advice column directly in the Lagrange basis
+(\texttt{halo2\_proofs}, \texttt{poly/commitment.rs},
+\texttt{commit\_lagrange} --- the same group element as committing the
+interpolated coefficients, so the commitment even precedes interpolation)
+and then interpolates each column over $H$ by an inverse FFT
+(\texttt{poly/domain.rs}, \texttt{lagrange\_to\_coeff}): these are
+precisely the column polynomials of \S\ref{sec:plonkish}. Each gate's
+stored expression tree is then evaluated with the committed column
+polynomials substituted for the queried cells --- a query at rotation $r$
+reading the polynomial at $\omega^r X$ --- and the results are folded with
+powers of the challenge $y$ and divided by $Z_H(X) = X^n - 1$
+(\texttt{plonk/prover.rs}; \texttt{plonk/vanishing/prover.rs};
+\texttt{divide\_by\_vanishing\_poly} in \texttt{poly/domain.rs}). The gate
+identities declared in \texttt{configure} have become the quotient $h(X)$
+of Phase~4 (\S\ref{sec:halo2-full}). This is the point where the toy of
+\emph{How Halo 2 Proves} resumes --- its \S\,\emph{From the grid to
+polynomials} interpolates a four-row trace and assembles exactly this
+$G(X)$ whose divisibility by $Z_H$ the rest of the protocol certifies ---
+and where the \emph{Orchard Guide}'s gadget stack bottoms out: each gadget
+of its survey is a bundle of \texttt{configure}-time gates and lookups plus
+\texttt{synthesize}-time regions, and after synthesis nothing remains of
+the stack but rows in these same columns. The scale-up from the toy is
+numerical, not conceptual. The deployed Action circuit has $k = 11$
+($n = 2048$ rows), the ten advice columns of \S\ref{sec:plonkish}, one
+instance column, and twenty-nine fixed columns, with a constraint-degree
+bound of nine across
+its gates and permutation and lookup expressions --- so the quotient splits
+into $9 - 1 = 8$ chunks, and the prover's FFTs run over an extended domain
+of size $2^{14} = 8 \cdot 2^{11}$ (\texttt{orchard}~0.13.1,
+\texttt{src/circuit\_description}; \texttt{halo2\_proofs},
+\texttt{poly/domain.rs}). The next two subsections supply the arguments
+this construction leans on: the permutation argument behind every copy
+constraint, and the lookup argument behind
+declarations~\eqref{eq:lookup-range}
+and~\eqref{eq:lookup-sinsemilla}.
+
+
 \subsection{The permutation (equality) argument}\label{sec:perm}
 
 A PLONK-style permutation argument, which Halo 2 generalises to multiple

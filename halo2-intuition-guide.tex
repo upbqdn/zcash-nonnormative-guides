@@ -156,7 +156,11 @@ where $\mathrm{PI}$ carries any public input on that row (here, the target
 $35$). A multiplication gate $a\cdot b = c$ is the choice
 $q_M = 1,\ q_O = -1$, the rest zero; an addition gate $a + b = c$ is
 $q_L = q_R = 1,\ q_O = -1$. Filling in our four operations gives the
-\emph{execution trace}, Table~\ref{tab:trace}.
+\emph{execution trace}, Table~\ref{tab:trace}. (The deployed system
+generalises this fixed selector bank to designer-chosen gates and lookups,
+declared once and filled row by row at proving time; the \emph{Halo~2
+Guide}'s section ``From statement to circuit'' shows that machinery on the
+real Orchard gates.)
 
 \begin{table}[htbp]
 \centering

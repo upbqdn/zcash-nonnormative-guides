@@ -1502,7 +1502,11 @@ We assemble the circuit from a small set of reusable \emph{gadgets} (``chips''),
 each a pre-wired block of custom gates and lookups realising one operation. The
 Orchard designers \emph{chose} the primitives so that these gadgets are inexpensive under
 PLONKish arithmetisation; this motivates the use of Sinsemilla and Poseidon
-rather than a bit-oriented hash.
+rather than a bit-oriented hash. How any such gadget is \emph{built} --- how
+its gates, lookups, and cell assignments are declared, and how synthesis
+turns the filled columns into the polynomials the proof commits to --- is
+the subject of the \emph{Halo~2 Guide}'s section ``From statement to
+circuit''; here we describe what each gadget enforces.
 
 \paragraph{The ECC gadget.} Implements the Pallas group law with the
 \emph{complete} addition formulas (no edge-case failures; the
