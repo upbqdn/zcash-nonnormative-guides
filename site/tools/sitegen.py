@@ -21,12 +21,20 @@ ROOT = Path(__file__).resolve().parents[2]
 FIGDIR = ROOT / "site" / "figures"
 WEBDIR = ROOT / "build" / "web"
 
-# Reading order for the landing page.
-VOLUMES = [
-    "math-guide", "crypto-guide", "halo2-guide", "halo2-intuition-guide",
-    "orchard-guide", "wallet-guide", "sync-guide",
-    "voting-guide", "zsa-guide", "tachyon-guide",
+# Reading order, grouping, and status chip for the landing page.
+VOLUME_META = [
+    ("math-guide", "Foundations", "stable"),
+    ("crypto-guide", "Foundations", "stable"),
+    ("halo2-guide", "Foundations", "stable"),
+    ("halo2-intuition-guide", "Foundations", "companion"),
+    ("orchard-guide", "Deployed protocol", "deployed"),
+    ("wallet-guide", "Deployed protocol", "deployed"),
+    ("sync-guide", "Deployed protocol", "deployed"),
+    ("voting-guide", "Frontier", "frontier"),
+    ("zsa-guide", "Frontier", "frontier"),
+    ("tachyon-guide", "Frontier", "design-stage"),
 ]
+VOLUMES = [v for v, _, _ in VOLUME_META]
 
 TIKZ_RE = re.compile(r"\\begin\{tikzpicture\}.*?\\end\{tikzpicture\}", re.S)
 DROP_IN_STANDALONE = ("\\documentclass", "\\usepackage[margin",
@@ -105,17 +113,24 @@ def webprep():
 
 
 def landing(outdir):
-    cards = []
-    for vol in volumes_present():
+    groups = {}
+    for vol, group, chip in VOLUME_META:
+        if not (ROOT / f"{vol}.tex").exists():
+            continue
         text = (ROOT / f"{vol}.tex").read_text()
         m = re.search(r"\\title\{\\textbf\{\\Huge ([^}]*)\}\\\\\[6pt\]"
                       r"\\large ([^}]*)\}", text)
         title = m.group(1) if m else vol
         sub = m.group(2) if m else ""
-        cards.append(
+        groups.setdefault(group, []).append(
             f'<li><a href="{vol}/"><span class="t">{title}</span>'
             f'<span class="s">{sub}</span></a>'
-            f' <a class="pdf" href="pdf/{vol}.pdf">PDF</a></li>')
+            f'<span class="meta"><span class="chip c-{chip}">{chip}</span>'
+            f'<a class="pdf" href="pdf/{vol}.pdf">PDF</a></span></li>')
+    cards = []
+    for group, items in groups.items():
+        cards.append(f'<h3 class="grp">{group}</h3><ol class="vols">'
+                     + "\n".join(items) + "</ol>")
     html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -138,9 +153,7 @@ window.addEventListener('DOMContentLoaded', () => {{
 }});
 </script>
 <h2>Volumes</h2>
-<ol class="vols">
 {chr(10).join(cards)}
-</ol>
 <p class="foot">Sources and compiled PDFs:
 <a href="https://github.com/upbqdn/zcash-arboretum">github.com/upbqdn/zcash-arboretum</a></p>
 </main></body></html>

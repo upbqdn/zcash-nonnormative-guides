@@ -1,0 +1,98 @@
+/* The Zcash Arboretum — site shell. Light/dark via media query with a
+   data-theme override hook; monograph typography. */
+
+:root {
+  --bg: #fdfcfa;
+  --fg: #1e2226;
+  --muted: #5b646d;
+  --accent: #2a6b46;
+  --card: #f4f2ed;
+  --border: #e0dcd2;
+  --chip-stable: #2a6b46;
+  --chip-deployed: #1f5f8b;
+  --chip-frontier: #8a5a1f;
+  --chip-design: #7a3b6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171a;
+    --fg: #d8dde2;
+    --muted: #98a2ab;
+    --accent: #6fbf92;
+    --card: #1c2126;
+    --border: #2b3238;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: Charter, "Bitstream Charter", "Source Serif 4", Georgia, serif;
+  line-height: 1.55;
+}
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 3rem 1.2rem 4rem;
+}
+h1 { font-size: 2.1rem; margin: 0 0 .4rem; letter-spacing: -.01em; }
+h2 { margin-top: 2.2rem; }
+h3.grp {
+  margin: 1.8rem 0 .5rem;
+  font-size: .95rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+}
+p.tag { color: var(--muted); margin-top: 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+ol.vols { list-style: none; margin: 0; padding: 0; }
+ol.vols li {
+  display: flex;
+  align-items: baseline;
+  gap: .8rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .7rem 1rem;
+  margin: .45rem 0;
+}
+ol.vols li > a { flex: 1; min-width: 0; }
+ol.vols .t { display: block; font-weight: 700; }
+ol.vols .s { display: block; font-size: .88rem; color: var(--muted); }
+ol.vols .meta { display: flex; align-items: center; gap: .6rem; }
+.chip {
+  font-family: ui-monospace, monospace;
+  font-size: .68rem;
+  padding: .12rem .45rem;
+  border-radius: 99px;
+  color: #fff;
+  white-space: nowrap;
+}
+.c-stable { background: var(--chip-stable); }
+.c-companion { background: var(--chip-stable); opacity: .75; }
+.c-deployed { background: var(--chip-deployed); }
+.c-frontier { background: var(--chip-frontier); }
+.c-design-stage { background: var(--chip-design); }
+a.pdf {
+  font-family: ui-monospace, monospace;
+  font-size: .75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .15rem .5rem;
+}
+p.foot { margin-top: 2.5rem; font-size: .85rem; color: var(--muted); }
+
+/* Overrides applied on top of LaTeXML's stylesheet inside volumes. */
+.ltx_page_main {
+  max-width: 50rem;
+  margin: 0 auto;
+  font-family: Charter, "Bitstream Charter", "Source Serif 4", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  .ltx_page_main, .ltx_page_content { background: var(--bg); color: var(--fg); }
+  .ltx_page_main a { color: var(--accent); }
+}

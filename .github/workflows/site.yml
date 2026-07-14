@@ -1,0 +1,61 @@
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LaTeXML
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends latexml
+      - name: Prepare web sources
+        run: |
+          python3 site/tools/sitegen.py webprep
+          cp -r site/figures build/web/figures
+      - name: Convert volumes to HTML
+        run: |
+          set -e
+          mkdir -p _site/pdf
+          for f in *-guide.tex; do
+            vol="${f%.tex}"
+            echo "=== $vol ==="
+            latexmlc --dest="_site/$vol/index.html" \
+                     --splitat=section --format=html5 \
+                     --navigationtoc=context \
+                     --css=../arboretum.css \
+                     --timeout=1200 \
+                     "build/web/$vol.tex"
+            cp "$vol.pdf" _site/pdf/
+          done
+      - name: Landing page and assets
+        run: |
+          python3 site/tools/sitegen.py landing --out _site
+          cp site/arboretum.css _site/
+      - name: Build search index
+        run: npx --yes pagefind --site _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
