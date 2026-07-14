@@ -3253,8 +3253,49 @@ Sapling bundle $\{$spends, outputs, \texttt{value\_sum}, \texttt{anchor},
 (ZIP-374, Encoding and Data type encodings).
 \end{construction}
 
-%% TODO(worked example): per CONVENTIONS a byte-level encoding example
-%% must be script-generated; add one once the example scripts land.
+\paragraph{A minimal PCZT, byte by byte.} The smallest PCZT the Creator can
+emit makes the positional encoding concrete. Instantiating the Creator for
+NU6.2 (branch \texttt{0x5437F330}), expiry height $10{,}000{,}000$, coin type
+$133$, and building with no spends or outputs yields $32$ bytes (computed by
+script against the \textsf{pczt} crate; every byte below is
+assertion-checked):
+
+\begin{center}
+\small
+\begin{tabular}{r l l}
+\toprule
+offset & field & bytes \\
+\midrule
+$0$  & magic \texttt{"PCZT"}                    & \texttt{50 43 5a 54} \\
+$4$  & version $2$ (raw LE \texttt{u32})        & \texttt{02 00 00 00} \\
+$8$  & \texttt{tx\_version} $= 5$ (varint)      & \texttt{05} \\
+$9$  & \texttt{version\_group\_id} (varint)     & \texttt{8a ce 9c b5 02} \\
+$14$ & \texttt{consensus\_branch\_id} (varint)  & \texttt{b0 e6 df a1 05} \\
+$19$ & \texttt{fallback\_lock\_time} $=$ None   & \texttt{00} \\
+$20$ & \texttt{expiry\_height} (varint)         & \texttt{80 ad e2 04} \\
+$24$ & \texttt{coin\_type} $= 133$ (varint)     & \texttt{85 01} \\
+$26$ & \texttt{tx\_modifiable} $= \mathtt{0b1000\_0011}$ & \texttt{83} \\
+$27$ & \texttt{proprietary}: empty map          & \texttt{00} \\
+$28$--$31$ & four absent bundles                & \texttt{00 00 00 00} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Three features of the Postcard discipline are visible at once. Integers are
+LEB128 varints, so \texttt{coin\_type} $= 133$ costs two bytes where $1$
+would cost one --- and re-encoding with coin type $1$ indeed shortens the
+stream to $31$ bytes, shifting every later field: the encoding is positional,
+which is precisely why fields cannot be inserted within a version
+(cross-checked by script: single-field variants differ exactly at the
+annotated offsets). Absence is one \texttt{0x00} byte: the version-$2$ format
+(emitted for NU6.2 onward; \textsf{pczt} \texttt{src/lib.rs}) wraps each of
+the transparent, Sapling, Orchard, and Ironwood bundles in an
+\texttt{Option} that collapses when the bundle is empty, so the entire
+bundle machinery of Construction~\ref{def:pczt-encoding} above costs four
+bytes until a first spend or output materialises. And the initial
+\texttt{tx\_modifiable} $= \mathtt{0x83}$ sets exactly the three
+PSBT-inherited bits of \S\ref{sec:pczt-iofin}: transparent inputs (bit $0$)
+and outputs (bit $1$) modifiable, shielded modifiable (bit $7$).
 
 Extensibility is deliberately narrow. New fields cannot be added within
 an existing PCZT version, because the Postcard encoding is positional;
