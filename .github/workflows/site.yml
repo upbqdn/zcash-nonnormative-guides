@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install LaTeXML
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends latexml
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends latexml libimage-magick-perl
       - name: Prepare web sources
         run: |
           python3 site/tools/sitegen.py webprep
