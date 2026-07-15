@@ -159,10 +159,19 @@ main.arb-landing {
 }
 .arb-landing .stem {
   border: 0; height: 1px;
-  background: linear-gradient(to right, var(--leafline) 0 38%,
-              transparent 38% 41%, var(--leafline) 41% 43%,
-              transparent 43% 46%, var(--leafline) 46% 100%);
+  background: var(--leafline);
   margin: 0 0 1.1rem;
+  position: relative;
+  overflow: visible;
+}
+.arb-landing .stem::after {
+  content: "\2766";           /* fleuron, the botanical printer's mark */
+  position: absolute;
+  left: 2.2rem; top: -.78em;
+  background: var(--paper);
+  padding: 0 .55em;
+  color: var(--muted);
+  font-size: .85rem;
 }
 .arb-landing .tag { color: var(--muted); margin: 0 0 1.6rem; max-width: 38rem; }
 .arb-landing h2 {
@@ -229,14 +238,16 @@ ol.plates li.plate:hover { border-color: var(--conifer); }
   margin-top: 3rem; font-size: .88rem; color: var(--muted);
 }
 
-/* pagefind widget tuning */
-:root {
+/* pagefind widget tuning — scoped to the element so these beat the
+   plugin stylesheet's :root defaults regardless of load order */
+.pagefind-ui, #search, #arb-search-ui {
   --pagefind-ui-scale: .9;
   --pagefind-ui-primary: var(--conifer);
   --pagefind-ui-text: var(--ink);
-  --pagefind-ui-background: var(--plate);
+  --pagefind-ui-background: var(--paper);
   --pagefind-ui-border: var(--edge);
   --pagefind-ui-border-width: 1px;
+  --pagefind-ui-tag: var(--plate);
   --pagefind-ui-font: inherit;
 }
 
@@ -294,13 +305,55 @@ figure.ltx_figure figcaption { color: var(--muted); font-size: .9rem; }
 .ltx_TOC .ltx_toclist { margin: 0; padding-left: 1.1rem; }
 .ltx_TOC a { color: var(--ink); }
 .ltx_TOC a:hover { color: var(--conifer); }
-.ltx_page_navbar, nav.ltx_page_navbar {
-  font-family: var(--mono); font-size: .74rem;
-  letter-spacing: .06em;
-}
 .ltx_page_header, .ltx_page_footer {
   border: 0; background: transparent; color: var(--muted);
   font-size: .85rem;
+}
+
+/* ---------- volume layout: sticky specimen-index sidebar ---------- */
+body[data-arb="vol"] {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+}
+body[data-arb="vol"] .arb-bar { grid-column: 1 / -1; }
+body[data-arb="vol"] .ltx_page_main { grid-column: 2; width: 100%; }
+.ltx_page_navbar {
+  grid-column: 1;
+  position: sticky;
+  top: 2.6rem;
+  align-self: start;
+  max-height: calc(100vh - 2.6rem);
+  overflow-y: auto;
+  padding: 1.1rem 1rem 2rem 1.2rem;
+  border-right: 1px solid var(--edge);
+  font-size: .84rem;
+  line-height: 1.45;
+}
+/* the site bar already names the volume; drop the navbar's giant title */
+.ltx_page_navbar > a[rel="start"] { display: none; }
+.ltx_page_navbar .ltx_TOC {
+  background: transparent; border: 0; border-radius: 0; padding: 0;
+}
+.ltx_page_navbar .ltx_toclist { list-style: none; padding-left: 0; }
+.ltx_page_navbar .ltx_toclist .ltx_toclist { padding-left: .85rem; }
+.ltx_page_navbar .ltx_tocentry { margin: .18rem 0; }
+.ltx_page_navbar a { color: var(--muted); }
+.ltx_page_navbar a:hover { color: var(--conifer); text-decoration: none; }
+.ltx_page_navbar .ltx_tag_ref {
+  font-family: var(--mono); font-size: .68rem; color: var(--muted);
+  margin-right: .15rem;
+}
+@media (max-width: 1099px) {
+  body[data-arb="vol"] { display: block; }
+  .ltx_page_navbar { display: none; }
+}
+
+/* content title block: ink, not link-green; subtitle quiet */
+.ltx_page_main .ltx_title_document a,
+.ltx_page_main .ltx_title_document { color: var(--ink); }
+.ltx_page_main .ltx_document > .ltx_title a { color: var(--ink); }
+.ltx_subtitle, .ltx_page_main .ltx_title_document .ltx_text {
+  color: var(--muted);
 }
 
 /* retire the default footer logo (Sammy stays in the source tree) */

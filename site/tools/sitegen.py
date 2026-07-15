@@ -143,13 +143,15 @@ def landing(outdir):
             continue
         title, sub = vol_title(vol)
         if chip == "companion":
-            acc = "companion plate"
+            acc = f"vol. {ROMANS[n - 1]} · companion"
+            plaque = ""
         else:
             n += 1
             acc = f"vol. {ROMANS[n - 1]}"
+            plaque = f'<span class="plaque">{chip}</span>'
         groups.setdefault(group, []).append(f"""<li class="plate">
 <div class="label"><span class="acc">{acc}</span>
-<span class="plaque">{chip}</span></div>
+{plaque}</div>
 <a class="title" href="{vol}/">{title}</a>
 <p class="sub">{sub}</p>
 <div class="links"><a href="{vol}/">Read</a>
@@ -220,8 +222,9 @@ document.querySelector('details.arb-search').addEventListener('toggle',
         n = 0
         for page in vdir.glob("*.html"):
             t = page.read_text()
+            t2 = re.sub(r"<body", '<body data-arb="vol"', t, count=1)
             t2 = re.sub(r"(<body[^>]*>)", r"\1" + bar.replace("\\", "\\\\"),
-                        t, count=1)
+                        t2, count=1)
             t2 = t2.replace('class="ltx_page_content"',
                             'class="ltx_page_content" data-pagefind-body',
                             1)
