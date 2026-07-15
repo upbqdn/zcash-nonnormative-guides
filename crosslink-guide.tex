@@ -91,7 +91,7 @@
 \maketitle
 \thispagestyle{empty}
 \begin{abstract}
-Assuming the Orchard protocol of the \emph{Orchard Guide} and the wallet layer
+Assuming the Orchard protocol of the \emph{Ironwood Guide} and the wallet layer
 of the \emph{Wallet Guide}, this volume of \emph{The Zcash Arboretum}
 documents Crosslink, the trailing-finality construction targeted at Zcash:
 the ebb-and-flow model and what its theorems actually prove, the construction
@@ -488,7 +488,7 @@ source.
 The interface-stability goal above is why the deployed-stack volumes
 remain accurate under Crosslink and why this volume cites rather than
 re-derives them. Anchor semantics and reorg behaviour of the commitment
-tree are those of the \emph{Orchard Guide} (\S``Proof of ownership of
+tree are those of the \emph{Ironwood Guide} (\S``Proof of ownership of
 \emph{some} valid note: the commitment tree'', in particular ``Anchor
 choice as the tree grows''); what a wallet counts as confirmed is the
 \emph{Wallet Guide}'s ZIP-315 \texttt{ConfirmationsPolicy} and expiry
@@ -500,8 +500,8 @@ between the two frontier efforts --- formally independent, with no
 interaction analysis in either direction (\S``Relation to Crosslink and
 the upgrade environment''); this volume owns the converse
 cross-reference.
-%% RESOLVED 2026-07-15: the caveat is in the \emph{Orchard Guide}, not
-%% the Voting Guide --- orchard-guide.tex:1016-1018 (\S``Proof of
+%% RESOLVED 2026-07-15: the caveat is in the \emph{Ironwood Guide}, not
+%% the Voting Guide --- ironwood-guide.tex:1016-1018 (\S``Proof of
 %% ownership of \emph{some} valid note: the commitment tree'', ``Anchor
 %% choice as the tree grows''): ``anchoring at least $100$ blocks deep
 %% (Zcash's reorg limit) avoids this entirely''. Drop the Voting Guide
@@ -1013,9 +1013,9 @@ once the chain grows past this height (\texttt{zebra} @ \texttt{9f3166b9},
 \texttt{zebra-state/src/constants.rs:16--19}). Nothing in today's Zcash
 consensus provides finality; the constant is a node policy, which is
 precisely the gap Crosslink addresses.
-%% TODO: reconcile with the Orchard Guide's anchor caveat, which cites
+%% TODO: reconcile with the Ironwood Guide's anchor caveat, which cites
 %% ``anchoring at least 100 blocks deep (Zcash's reorg limit)''
-%% (\emph{Orchard Guide}, \S``Proof of ownership of \emph{some} valid
+%% (\emph{Ironwood Guide}, \S``Proof of ownership of \emph{some} valid
 %% note: the commitment tree''); the 100-block figure is zcashd lineage,
 %% the 1000-block constant is Zebra's. State both or neither, with crate
 %% cites, after checking zcashd.
@@ -1065,7 +1065,7 @@ sanitization''). Zcash violates the premise: transaction expiry can be
 handled (the height-bounded validity of ZIP-203; \emph{Wallet Guide},
 \S``Expiry (ZIP-203)''), but missing anchors break the argument, because
 a transaction invalid for a missing anchor can become valid later
-(anchors are the tree roots developed in the \emph{Orchard Guide},
+(anchors are the tree roots developed in the \emph{Ironwood Guide},
 \S``Proof of ownership of \emph{some} valid note: the commitment tree'').
 %% RESOLVED 2026-07-15: read arXiv:2010.10447v1 (2020-10-20;
 %% accountability + light clients). Its LC-block reference to the
@@ -1481,7 +1481,7 @@ heuristic depths (\emph{Wallet Guide}, \S``Confirmations, trust, and
 spendability'') and recover from rollbacks by truncate-and-rescan
 (\emph{Wallet Guide}, \S``Reorganisations: truncate and rescan''); an
 Orchard anchor is only as settled as the chain suffix beneath it
-(\emph{Orchard Guide}, \S``Proof of ownership of \emph{some} valid note:
+(\emph{Ironwood Guide}, \S``Proof of ownership of \emph{some} valid note:
 the commitment tree''); and the coin-weighted vote fixes its electorate at
 a snapshot height that nothing today prevents from reorganising
 (\emph{Voting Guide}, \S``The snapshot roots: posted, never verified'').
@@ -2009,7 +2009,7 @@ rollback (\texttt{construction.md}:497--499). This is precisely the
 service today's applications lack: wallets repair rollbacks after the
 fact by truncate-and-rescan (\emph{Wallet Guide}, \S``Reorganisations:
 truncate and rescan''), and anchor validity tracks the unfinalized chain
-(\emph{Orchard Guide}, \S``Proof of ownership of \emph{some} valid note:
+(\emph{Ironwood Guide}, \S``Proof of ownership of \emph{some} valid note:
 the commitment tree'').
 
 \begin{lemma}[Local fin-depth]\label{lem:xl-fin-depth}
@@ -2373,7 +2373,7 @@ commit before it is treated as the deployed construction.
 %% only against future productionization-phase commits.
 
 %% Crosslink Guide, section: Stake, delegation, and slashing. Body only;
-%% assumes the shared preamble of the series (orchard-guide.tex lines 1-90).
+%% assumes the shared preamble of the series (ironwood-guide.tex lines 1-90).
 %%
 %% Source pins: tfl-book @ fe6e1d6f (2024-12-13); zebra-crosslink @ 6d02a1b8
 %% (2026-04-21; shallow clone, depth 1 -- per-file history unavailable);
@@ -2500,9 +2500,12 @@ takes place exclusively within the Orchard pool'' (Shielded Labs, Updated
 Staking Design, 2025-10-27/11-05). Participants lock ZEC to delegate stake
 to a chosen finalizer and earn rewards; Penumbra-style fully shielded
 delegations were considered and deferred to future versions, prioritizing
-time-to-market (ibid.). The pool being staked from is the one this series
-constructs in the \emph{Orchard Guide} (\S``Representation of a note: notes
-and note commitments''); nothing below alters its note machinery.
+time-to-market (ibid.). The 2025-10/11 design predates NU6.3's pool
+terminology: read ``the Orchard pool'' there as the Orchard-protocol
+shielded pool --- since NU6.3, the Ironwood pool. That pool is the one this
+series constructs in the \emph{Ironwood Guide} (\S``Representation of a
+note: notes and note commitments''); nothing below alters its note
+machinery.
 
 \begin{definition}[Staking position, roster, stake weight, active set]
 \label{def:xl-roster}
@@ -2567,7 +2570,7 @@ staking-action field carrying four abstract actions
 
 Value flows must balance per the Zcash protocol specification's chain
 value pool accounting (\S4.17); the Orchard side of that balance is the
-value-commitment machinery of the \emph{Orchard Guide} (\S``Conservation
+value-commitment machinery of the \emph{Ironwood Guide} (\S``Conservation
 of value: value commitments and the binding signature''). The draft
 consensus rules, verbatim from the implementation book
 (\texttt{book/src/design/nutshell.md} at \texttt{6d02a1b8}):
@@ -3377,13 +3380,13 @@ consensus splits'' (\texttt{zebra} @ \texttt{9f3166b9},
 The lesson for prose about pre-Crosslink ``de facto finality'': the
 rollback depth is node policy, not consensus, and it currently differs by
 a factor of ten between upstream and the very fork implementing
-Crosslink. The \emph{Orchard Guide} (\S``Proof of ownership of \emph{some}
+Crosslink. The \emph{Ironwood Guide} (\S``Proof of ownership of \emph{some}
 valid note: the commitment tree'', paragraph ``Anchor choice as the tree
 grows'') states that anchoring ``at least 100 blocks deep (Zcash's reorg
 limit) avoids this entirely''; against upstream's 1000-block window that
 sentence overstates a policy as a limit.
-%% TODO: file a cross-volume erratum against the Orchard Guide sentence
-%% (orchard-guide.tex:1005-1034) once the volume owner confirms wording.
+%% TODO: file a cross-volume erratum against the Ironwood Guide sentence
+%% (ironwood-guide.tex:1005-1034) once the volume owner confirms wording.
 
 \paragraph{Classification.} \emph{Specified as code} at prototype rigor
 only --- every RPC is a self-described placeholder, and nothing in this
@@ -3400,7 +3403,7 @@ in $\Pi_{\mathrm{bc}}$ is that of $\Pi_{\mathrm{origbc}}$ modulo the
 non-contextual new block rules (tfl-book \texttt{construction.md}:267,
 701--703). The Orchard anchor rule is therefore inherited as-is: a spend
 may reference the treestate of \emph{any} main-chain block from Orchard
-activation onward, with no sliding window (\emph{Orchard Guide},
+activation onward, with no sliding window (\emph{Ironwood Guide},
 \S``Proof of ownership of \emph{some} valid note: the commitment tree'',
 paragraph ``Anchor choice as the tree grows''; mainnet floor 1{,}687{,}104)
 --- where ``main chain'' now means the $\mathsf{localba}$ history. No
@@ -3429,7 +3432,7 @@ branch costs are concrete:
   current block is at height H, the anchor SHOULD reflect the final
   treestate of the block at height H-3'' (\texttt{zips/zip-0315.rst}:586--587)
   --- preserves latency and the anonymity-set size and uniformity that
-  motivate near-tip anchoring (\emph{Orchard Guide}, ibid.), and retains
+  motivate near-tip anchoring (\emph{Ironwood Guide}, ibid.), and retains
   the reorg caveat for the non-final suffix.
 \end{itemize}
 
@@ -3460,7 +3463,7 @@ via the Linearity and Last Final Snapshot rules, and avoiding sanitization
 implementations and other consumers of the Zcash block chain''
 (\texttt{security-analysis.md}:263; \texttt{potential-changes.md}:348--363).
 The wallet-visible consequence: under Crosslink~2, exactly the anchor and
-expiry semantics documented in the \emph{Orchard Guide} and \emph{Wallet
+expiry semantics documented in the \emph{Ironwood Guide} and \emph{Wallet
 Guide} carry over --- on each of the two chains separately.
 
 \paragraph{Classification.} The inherited anchor rule is \emph{designed
@@ -4130,7 +4133,7 @@ as its pre-BFT fallback finality depth (zebra-crosslink @
 \texttt{zebra-crosslink/src/lib.rs}, lines 260--292); upstream Zebra has
 since raised the same constant to $1000$ (zebra @ \texttt{9f3166b},
 \texttt{zebra-chain/src/parameters/constants.rs}, line 30), and the
-\emph{Orchard Guide}'s 100-block ``reorg horizon'' for anchor selection
+\emph{Ironwood Guide}'s 100-block ``reorg horizon'' for anchor selection
 is flagged as a cross-volume erratum in \S\ref{sec:xl-node-interface}.
 We cite the bound as interface, per this series' scope rule; its
 derivation belongs to the PoW layer.
@@ -4265,7 +4268,7 @@ expresses transaction confirmation entirely as depth policy on the
 black-box PoW chain: the \emph{Wallet Guide} documents the ZIP-315
 \texttt{ConfirmationsPolicy} with trusted depth $3$ and untrusted depth
 $10$ (\S``Transaction construction'', Definition ``Confirmations
-policy''), and the \emph{Orchard Guide} records the 100-block reorg
+policy''), and the \emph{Ironwood Guide} records the 100-block reorg
 horizon governing anchor robustness (\S``Proof of ownership of
 \emph{some} valid note: the commitment tree''). Crosslink would add a
 protocol-level notion beneath both: finality status is the sole

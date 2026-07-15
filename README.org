@@ -32,10 +32,11 @@ Layered; read each atop the ones it names.
      statement carried end to end, every number real.
 
 ** Deployed protocol
-4. *Orchard Guide* (=orchard-guide.tex=) — notes, commitments, nullifiers, the
-   commitment tree and authentication paths, the key hierarchy, note
-   encryption, value balance, the Action statement and circuit, and
-   post-quantum security of the deployed stack.
+4. *Ironwood Guide* (=ironwood-guide.tex=) — notes, commitments, nullifiers,
+   the commitment tree and authentication paths, the key hierarchy, note
+   encryption, value balance, the Action statement and circuit, the two-pool
+   split (legacy Orchard, current Ironwood), and post-quantum security of the
+   deployed stack.
 5. *Wallet Guide* (=wallet-guide.tex=) — the wallet layer: ZIP-32 hierarchical
    key derivation, unified addresses (ZIP-316), fees (ZIP-317), and the
    transaction-construction pipeline as deployed in librustzcash.

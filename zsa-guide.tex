@@ -91,7 +91,7 @@
 \maketitle
 \thispagestyle{empty}
 \begin{abstract}
-Assuming the Orchard protocol of the \emph{Orchard Guide}, this volume of
+Assuming the Orchard protocol of the \emph{Ironwood Guide}, this volume of
 \emph{The Zcash Arboretum} documents Zcash Shielded Assets: per-asset value
 bases and asset identity, transparent issuance and finalization (ZIP-227),
 shielded transfer and burn (ZIP-226), and the split-note construction that
@@ -129,7 +129,7 @@ than ZEC and TAZ (\texttt{zip-0227.rst} lines~35--39).
 
 The design reduces to one alteration of Orchard's value algebra. The fixed
 value base $V^{\mathsf{Orchard}}$ of the homomorphic Pedersen value commitment
-(\emph{Orchard Guide}, \S``Conservation of value: value commitments and the
+(\emph{Ironwood Guide}, \S``Conservation of value: value commitments and the
 binding signature'') is replaced, per Asset, by an \emph{Asset Base} witnessed
 inside the circuit; the same Asset Base must appear in the old and the new
 note commitments and as the base of the Action's value commitment, so balance
@@ -151,14 +151,14 @@ issuance keys, issue notes, reference notes, and the node-side issuance
 state --- and the note-plaintext extension.
 
 Everything the delta rests on is constructed in the companion volumes and is
-cited, never re-derived: notes and note commitments (\emph{Orchard Guide},
+cited, never re-derived: notes and note commitments (\emph{Ironwood Guide},
 \S``Representation of a note: notes and note commitments''); value
 commitments, the bases $V^{\mathsf{Orchard}}$ and $R^{\mathsf{Orchard}}$, and
-the binding signature (\emph{Orchard Guide}, \S``Conservation of value: value
+the binding signature (\emph{Ironwood Guide}, \S``Conservation of value: value
 commitments and the binding signature''); the Action statement and dummy
-spends (\emph{Orchard Guide}, \S``The Action statement, formally'');
-nullifiers (\emph{Orchard Guide}, \S``Prevention of double-spending:
-nullifiers''); Sinsemilla (\emph{Orchard Guide}, \S``The commitment primitive:
+spends (\emph{Ironwood Guide}, \S``The Action statement, formally'');
+nullifiers (\emph{Ironwood Guide}, \S``Prevention of double-spending:
+nullifiers''); Sinsemilla (\emph{Ironwood Guide}, \S``The commitment primitive:
 Sinsemilla''); and, at the wallet layer, transaction construction, PCZT, and
 fees (\emph{Wallet Guide}, \S``Transaction construction'', \S``Partially
 created transactions (PCZT)'', \S``Fees (ZIP-317)'').
@@ -692,7 +692,7 @@ group hash is the protocol specification's
 $\GroupHash^{\PP}$ (\S5.4.9.8, ``Group Hash into Pallas and Vesta''),
 whose construction --- \texttt{expand\_message\_xmd} over BLAKE2b, two
 field elements through the simplified SWU map, summed and carried through
-the isogeny --- the \emph{Orchard Guide} develops in ``Preliminaries:
+the isogeny --- the \emph{Ironwood Guide} develops in ``Preliminaries:
 hashing and encoding on the curve''; we reuse it as a deterministic,
 public, nothing-up-my-sleeve map into the Pallas group and do not
 re-derive it here.
@@ -797,7 +797,7 @@ v)$'' (\texttt{zip-0226.rst}:182--194). The point
 $V^{\mathsf{Orchard}} :=
 \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}cv}, \texttt{"v"})$ is
 already constructed, together with its companion $R^{\mathsf{Orchard}}$,
-in the \emph{Orchard Guide}, ``Conservation of value: value commitments
+in the \emph{Ironwood Guide}, ``Conservation of value: value commitments
 and the binding signature'', Definition ``Net value commitment''; we cite
 it and do not re-derive it.
 
@@ -1066,7 +1066,7 @@ shielded from the first spend onward.
 
 \paragraph{Computation of $\rho$.} An Orchard note takes
 $\rho := \nfsym_{\mathrm{old}}$ from the Action that creates it (the
-\emph{Orchard Guide}, \S``Transmission and detection of a note'');
+\emph{Ironwood Guide}, \S``Transmission and detection of a note'');
 an issue note has no such Action, so ZIP-227 derives $\rho$ from the
 transaction's OrchardZSA transfer bundle instead:
 \[
@@ -1692,7 +1692,7 @@ owners Pablo Kogan and Vivek Arte of QEDit, Daira-Emma Hopwood, and Jack
 Grigg) defines, jointly with the issuance protocol of ZIP-227
 (\S\ref{sec:zsa-issuance}), the OrchardZSA transfer and burn protocol. We
 develop it as four deltas against the Orchard baseline, each citing the
-construction it modifies in the \emph{Orchard Guide} rather than re-deriving
+construction it modifies in the \emph{Ironwood Guide} rather than re-deriving
 it: the note gains one field, the \emph{Asset Base} (\S\ref{sec:zsa-note});
 the note commitment becomes a case split that keeps ZEC commitments identical
 to NU5 (\S\ref{sec:zsa-notecommit}); the value commitment trades its fixed
@@ -1728,7 +1728,7 @@ flag it in place.
 
 \begin{definition}[OrchardZSA note]\label{def:zsa-note}
 An OrchardZSA note extends the Orchard note --- the tuple
-$(\mathsf{addr}, v, \rho, \psi, \rcm)$ of the \emph{Orchard Guide},
+$(\mathsf{addr}, v, \rho, \psi, \rcm)$ of the \emph{Ironwood Guide},
 ``Representation of a note: notes and note commitments'' --- by exactly one
 field:
 \[
@@ -1781,7 +1781,7 @@ Asset (ZEC/TAZ) the Asset Base is instead \emph{defined} to be
 V^{\mathsf{Orchard}} :=
 \GroupHash^{\Pallas}(\mathtt{z.cash:Orchard\text{-}cv}, \texttt{"v"}),
 \]
-the fixed value-commitment base of the \emph{Orchard Guide}, ``Conservation
+the fixed value-commitment base of the \emph{Ironwood Guide}, ``Conservation
 of value: value commitments and the binding signature'' (ZIP-226). This
 single identification is what keeps every ZEC computation below identical to
 NU5: ZIP-226 uses $\mathsf{ValueCommit}^{\mathsf{Orchard}}_{\rcv}(v)$ as
@@ -1841,7 +1841,7 @@ The two branches carry the design's two promises. In the native branch the
 Asset Base is not hashed at all: a ZEC note commitment under OrchardZSA
 \emph{is} the NU5 commitment, bit for bit. In the ZSA branch the message
 appends $\mathsf{AssetBase}^\star$ ($256$ bits) after $\psi$, against the
-baseline layout of the \emph{Orchard Guide}, ``Representation of a note'':
+baseline layout of the \emph{Ironwood Guide}, ``Representation of a note'':
 \[
 \gd^\star \,\|\, \pkd^\star \,\|\, \mathrm{LE}_{64}(v) \,\|\,
 \mathrm{LE}_{255}(\rho) \,\|\, \mathrm{LE}_{255}(\psi)
@@ -1876,7 +1876,7 @@ them in constant time on \texttt{asset.is\_zatoshi()} (\textsf{orchard-zsa},
 \end{remark}
 
 The nullifier of an ordinary (non-split) OrchardZSA note is generated
-exactly as in Orchard (protocol specification \S4.16; \emph{Orchard Guide},
+exactly as in Orchard (protocol specification \S4.16; \emph{Ironwood Guide},
 ``Prevention of double-spending: nullifiers''); only Split Inputs use the
 modified, randomized formula of \S\ref{sec:zsa-split} (ZIP-226).
 
@@ -1929,7 +1929,7 @@ $\mathsf{assetBurn}$ entry (or $0$ if absent), and the ZEC component
 equals $v_{\mathrm{balance}}^{\mathsf{Orchard}}$ (ZIP-226). The
 binding-signature mechanics --- $\mathsf{bsk}$/$\mathsf{bvk}$ cancellation
 and RedPallas on the base $R^{\mathsf{Orchard}}$ --- are those of the
-\emph{Orchard Guide}, ``Conservation of value'', and we do not restate them.
+\emph{Ironwood Guide}, ``Conservation of value'', and we do not restate them.
 
 \begin{remark}[Implementation: $\mathsf{derive\_bvk}$]\label{rem:zsa-bvk-impl}
 Function \texttt{derive\_bvk\_raw} computes the ZIP equation verbatim:
@@ -2011,7 +2011,7 @@ errors \texttt{AssetNotFoundInState} and \texttt{InsufficientSupply}
 Padding is where the asset dimension bites. An Orchard transfer with more
 outputs than inputs pads with \emph{dummy} spends: zero-value notes whose
 Merkle membership check is gated off by $v_{\mathrm{old}}$ (constraint A3 of
-the \emph{Orchard Guide}, ``The Action statement, formally''). For Custom
+the \emph{Ironwood Guide}, ``The Action statement, formally''). For Custom
 Assets that padding is unsound, because the circuit forces the output note's
 Asset Base to equal the input note's (\S\ref{sec:zsa-circuit}) --- and a
 dummy input's Asset Base is chosen freely by the prover. ZIP-226 states the
@@ -2044,7 +2044,7 @@ points reject duplicate Assets and amounts that do not fit in $63$ bits
 A bin statement first. ZIP-226's ``Circuit Statement'' section describes the
 constraint changes informally and defers ``all modifications in the
 Circuit'' to an external document; no statement at the rigor of the
-\emph{Orchard Guide}'s Definition ``Orchard Action statement'' exists in any
+\emph{Ironwood Guide}'s Definition ``Orchard Action statement'' exists in any
 specification. The implemented circuit is the de facto specification, and
 every gate-level claim below cites it (\textsf{orchard-zsa},
 \texttt{src/circuit/circuit\_zsa.rs}). Bin: \emph{designed and implemented,
@@ -2178,7 +2178,7 @@ reserved for ZSA notes upstream. Bin: \emph{open}.
 \end{remark}
 
 \paragraph{Digests.} Withdrawn ZIP-246 extends the ZIP-244 digest tree ---
-the baseline is the \emph{Orchard Guide}, ``Conservation of value'', its
+the baseline is the \emph{Ironwood Guide}, ``Conservation of value'', its
 ZIP-244 paragraph --- with a per-Action-Group
 $\mathsf{orchard\_burn\_digest}$ (node T.4a.vi) under
 $\mathsf{orchard\_action\_groups\_digest}$ (personalization
@@ -2248,7 +2248,7 @@ with no real input spends a zero-valued note under a freshly sampled key,
 and the membership constraint waves it through because the check is gated by
 the spent value --- constraint A3 of the Action statement,
 $v_{\mathrm{old}} \cdot (\mathsf{root} - \mathsf{anchor}) = 0$, ``how an
-Action pads with no real input'' (the \emph{Orchard Guide}, ``The Action
+Action pads with no real input'' (the \emph{Ironwood Guide}, ``The Action
 statement, formally''; its node-verification section, ``What a node
 verifies, without ever observing the note'', records that zero-value dummy
 spends are accepted by design). The construction is protocol \S4.8.3,
@@ -2256,7 +2256,7 @@ implemented in \texttt{orchard-zsa}, \texttt{src/builder.rs},
 \texttt{SpendInfo::dummy}: a random spending key, a zero-valued note, and a
 random Merkle path that is never checked. The exemption is sound there
 because every Orchard value commitment rides the \emph{fixed} base
-$V^{\mathsf{Orchard}}$ (\emph{Orchard Guide}, ``Conservation of value:
+$V^{\mathsf{Orchard}}$ (\emph{Ironwood Guide}, ``Conservation of value:
 value commitments and the binding signature''): a dummy spend can move no
 value, whatever path it fails to prove. ZIP-226 replaces the fixed base
 with a witnessed one, and the same exemption becomes a mint. This section
@@ -2290,7 +2290,7 @@ v^{\mathsf{net}}_{\mathsf{AssetId}}\bigr) \\
 \end{split}
 \end{equation}
 with $v^{\mathsf{net}} := v_{\mathrm{old}} - v_{\mathrm{new}}$ and
-$R^{\mathsf{Orchard}}$ the randomness base of the \emph{Orchard Guide}'s
+$R^{\mathsf{Orchard}}$ the randomness base of the \emph{Ironwood Guide}'s
 net value commitment (``Conservation of value: value commitments and the
 binding signature''), unchanged. The native asset keeps the old base:
 ``the Asset Base of the ZEC Asset will be kept as the original value base
@@ -2458,7 +2458,7 @@ scoping is the disjunction in \S\ref{sec:zsa-split-circuit}.
 \subsection{The specified circuit delta}\label{sec:zsa-split-circuit}
 
 We state ZIP-226's circuit changes (``Circuit Statement'') as a delta
-against the Action statement A1--A9 of the \emph{Orchard Guide} (``The
+against the Action statement A1--A9 of the \emph{Ironwood Guide} (``The
 Action statement, formally''). Two new boolean witnesses appear:
 $\mathsf{split\_flag}$, and $\mathsf{is\_native\_asset}$, constrained to
 equal $1$ exactly when the witnessed base is the native one,
@@ -2660,7 +2660,7 @@ Notes''):
 + \psi^{\nfsym}\,]\; G^{\mathsf{nf}} \;+\; \cmsym_{\mathrm{old}} \;+\;
 L^{\mathsf{Orchard}}\,\bigr),
 \end{equation}
-in the notation of the \emph{Orchard Guide}'s A5 (``The Action statement,
+in the notation of the \emph{Ironwood Guide}'s A5 (``The Action statement,
 formally''; ZIP-226 writes $\mathcal{K}^{\mathsf{Orchard}}$ for
 $G^{\mathsf{nf}}$ and computes the bracketed sum in the Pallas base
 field). Two deltas against A5: the note's $\psi_{\mathrm{old}}$ is
@@ -3040,7 +3040,7 @@ Mining).
 \label{sec:zsa-digests}
 
 ZIP-246 extends the ZIP-244 digest tree --- constructed for vanilla Orchard
-in the \emph{Orchard Guide}, \S``Conservation of value: value commitments and
+in the \emph{Ironwood Guide}, \S``Conservation of value: value commitments and
 the binding signature'' --- from four top-level branches to six:
 \[
 \mathsf{txid} := \mathrm{BLAKE2b\text{-}256}\bigl(\texttt{ZcashTxHash\_}
@@ -3363,7 +3363,10 @@ but each blocks byte-compatibility with ZIP-230/246 as written.
 \item \emph{Lead byte.} The implementation hard-codes
   $\texttt{NOTE\_VERSION\_BYTE\_V3} = \mathtt{0x03}$; upstream ZIP-230
   withdrew that claim after ZIP-2005 took $\mathtt{0x03}$, leaving the ZSA
-  lead byte an unassigned placeholder. Reassignment is a hard prerequisite
+  lead byte an unassigned placeholder. The fork's choice predates upstream
+  ZIP-2005 assigning $\mathtt{0x03}$ to Ironwood notes and directing future
+  proposals to pick a new value; the collision is fork-only context, with no
+  format ambiguity on Zcash mainnet. Reassignment is a hard prerequisite
   for any deployment: the lead byte selects the note-plaintext parser.
 \item \emph{Split-note $\psi^{\mathsf{nf}}$.} Upstream ZIP-226 now derives
   the split-note nullifier randomizer as

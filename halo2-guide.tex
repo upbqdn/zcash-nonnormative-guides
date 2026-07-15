@@ -110,7 +110,7 @@ argument requires. We then motivate recursive proof composition and develop the 
 schemes that make it practical. Finally, we assemble Halo~2 itself:
 PLONKish arithmetisation, the permutation and lookup arguments, the inner-product polynomial
 commitment with a worked example and its accumulation (the ``Halo trick''), and the complete
-seven-phase protocol. The \emph{Orchard Guide} subsequently uses this proof system to construct a shielded
+seven-phase protocol. The \emph{Ironwood Guide} subsequently uses this proof system to construct a shielded
 payment protocol.
 
 \section{Polynomial IOPs and the SNARK design pattern}\label{sec:piop}
@@ -470,7 +470,7 @@ the concrete proof system Halo 2: a transparent PLONKish SNARK whose
 polynomial commitment is the inner-product argument over the Pasta cycle.
 This section develops Halo 2 to the level of detail required to state
 \emph{what an Orchard Action proof actually is}, the subject of
-the \emph{Orchard Guide}.
+the \emph{Ironwood Guide}.
 
 \subsection{PLONKish arithmetisation}\label{sec:plonkish}
 
@@ -508,7 +508,7 @@ gates of higher arity and degree, each gated by a selector $q_i(X)$
 vanishing on rows where the gate is inactive. The Orchard Action circuit
 uses ten advice columns plus a small fixed-column lookup table for
 Sinsemilla; its custom gates encode the algebraic constraints of the
-Action statement (the \emph{Orchard Guide}) together with the
+Action statement (the \emph{Ironwood Guide}) together with the
 complete- and incomplete-addition arithmetic for in-circuit
 elliptic-curve operations (the \emph{Math Guide} names the distinction).
 
@@ -736,7 +736,7 @@ Prover-side, \texttt{assign\_region} rejects a \emph{known} bad witness
 with an error --- a developer diagnostic, not a constraint. (The
 circuit's other incomplete additions --- the variable-base
 ladder's fused double-and-add rounds and Sinsemilla's two per chunk, the
-ones the \emph{Orchard Guide}'s gadget survey counts --- are separate gates
+ones the \emph{Ironwood Guide}'s gadget survey counts --- are separate gates
 built on the same discipline; \texttt{ecc/chip/mul/\allowbreak incomplete.rs},
 \texttt{sinsemilla/chip.rs}.)
 
@@ -860,7 +860,7 @@ of Phase~4 (\S\ref{sec:halo2-full}). This is the point where the toy of
 \emph{How Halo 2 Proves} resumes --- its \S\,\emph{From the grid to
 polynomials} interpolates a four-row trace and assembles exactly this
 $G(X)$ whose divisibility by $Z_H$ the rest of the protocol certifies ---
-and where the \emph{Orchard Guide}'s gadget stack bottoms out: each gadget
+and where the \emph{Ironwood Guide}'s gadget stack bottoms out: each gadget
 of its survey is a bundle of \texttt{configure}-time gates and lookups plus
 \texttt{synthesize}-time regions, and after synthesis nothing remains of
 the stack but rows in these same columns. The scale-up from the toy is
@@ -1398,7 +1398,7 @@ never single them out. We single them out now, because what an Orchard Action pr
 anchor, nullifier $\nfsym$, net value commitment $\cvsym^{\mathsf{net}}$,
 randomised key $\rk$, extracted new-note commitment $\cmx$, and the
 $\mathsf{enableSpends}/\mathsf{enableOutputs}$
-flags (the \emph{Orchard Guide}).
+flags (the \emph{Ironwood Guide}).
 
 \paragraph{The instance polynomial.}
 An instance column is a public-input column: its $n$ entries
@@ -1452,7 +1452,7 @@ exactly those public values; a prover that does not know such a witness
 verifier with at most negligible probability. This binds the proof to its public
 statement: an Action proof that a node verifies against an anchor it accepts,
 a nullifier it will mark spent, and a value commitment it will sum into
-the net balance check (the \emph{Orchard Guide}) can only verify if the
+the net balance check (the \emph{Ironwood Guide}) can only verify if the
 prover knew a witness consistent with \emph{those} values.
 
 \subsection{Zero knowledge: hiding the witness in Halo 2}\label{sec:halo-zk}
@@ -1535,5 +1535,5 @@ simulator reproduces the proof, so it leaks nothing else). It is exactly this
 combination --- ``the prover knows a satisfying witness, and the proof discloses
 nothing more'' --- on which the Orchard Action proof rests: knowledge soundness
 yields balance and nullifier integrity, zero knowledge yields privacy
-(\emph{Orchard Guide}).
+(\emph{Ironwood Guide}).
 \end{document}

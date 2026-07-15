@@ -1716,7 +1716,7 @@ the first state element after one permutation of the input padded by the fixed
 capacity value \(2^{65}\) (so no message padding is then required). Keyed by its first
 argument it is the pseudorandom function \(F_{\mathsf{nk}}(\rho) =
 \mathsf{PoseidonHash}(\mathsf{nk}, \rho)\) from which Orchard constructs the nullifier
-(\emph{Orchard Guide}); unlike Pedersen or Sinsemilla its security rests on
+(\emph{Ironwood Guide}); unlike Pedersen or Sinsemilla its security rests on
 cryptanalytic confidence in the round function rather than on a clean assumption
 such as discrete log.
 
@@ -1933,7 +1933,7 @@ Each round is the map \((A, B) \mapsto (B, (A + y) \bmod m)\), where \(y = y(i, 
 \begin{remark}[``Exactly a keyed bijection'', and the locus of security]\label{prf:rem:fpe}
 Two points complete the picture. First, FF1 is a keyed bijection by \emph{structure}: invertibility comes for free from the Feistel construction (Proposition~\ref{prf:prp:feistelbijection} and \ref{prf:prp:ff1bijection}) and holds for \emph{any} round function whatsoever, including a broken or constant one. The PRF (AES) is responsible not for invertibility but for \emph{pseudorandomness} --- making \(\mathcal{E}_{k,T}\) look like a uniformly random permutation of \(\mathcal{X}\) (Definition~\ref{prf:def:fpe}), per the Luby--Rackoff heuristic of Theorem~\ref{prf:thm:lubyrackoff} adapted to the modular, multi-round, tweaked setting. This clean separation --- bijectivity from algebra, security from the PRF --- is precisely why Feistel is the standard route to FPE.
 
-Second, the domain-size caveat is real: NIST restricts FF1 to \(\rho^{\nu} \ge 10^{6}\), because for very small domains an attacker can recover or distinguish the keyed permutation by exhaustively cataloguing input/output pairs, and known message-recovery attacks on small-domain FPE (Bellare--Hoang--Tessaro and successors) erode the security margin. For the moderately large domains FPE is meant for (card numbers, identifiers), and with ten rounds, FF1 is the NIST-standardised, AES-backed realisation of a keyed pseudorandom bijection on an arbitrary finite format. Its single use in Orchard is the derivation of \emph{diversifiers}: FF1-AES256 maps an address index to the 11-byte diversifier embedded in a shielded address, so that one spending key yields many unlinkable addresses (\emph{Orchard Guide}).
+Second, the domain-size caveat is real: NIST restricts FF1 to \(\rho^{\nu} \ge 10^{6}\), because for very small domains an attacker can recover or distinguish the keyed permutation by exhaustively cataloguing input/output pairs, and known message-recovery attacks on small-domain FPE (Bellare--Hoang--Tessaro and successors) erode the security margin. For the moderately large domains FPE is meant for (card numbers, identifiers), and with ten rounds, FF1 is the NIST-standardised, AES-backed realisation of a keyed pseudorandom bijection on an arbitrary finite format. Its single use in Orchard is the derivation of \emph{diversifiers}: FF1-AES256 maps an address index to the 11-byte diversifier embedded in a shielded address, so that one spending key yields many unlinkable addresses (\emph{Ironwood Guide}).
 \end{remark}
 
 \clearpage
@@ -2786,7 +2786,7 @@ To turn the hash into a \emph{hiding} commitment one appends a Pedersen blinding
 Hiding is inherited verbatim from Pedersen: \([r]H'\) is uniform on \(\G\) for uniform \(r\), so the commitment's distribution is independent of \(m\) (Theorem~\ref{commitments:thm:pedersen-hiding}). Binding rests on discrete log: two valid openings to distinct messages yield either a collision in \(\mathrm{SinsemillaHash}\) (Proposition~\ref{commitments:prop:sinsemilla-cr}) or a nontrivial discrete-log relation between \(H'\) and the hash generators. Orchard's note commitment \(\mathsf{NoteCommit}\) and key commitment \(\mathsf{CommitIvk}\) instantiate exactly this map.
 
 \begin{remark}[Significance for circuits]\label{commitments:rem:sinsemilla-circuit}
-Sinsemilla's advantage is \emph{verification cost inside a proof}. In a SNARK, the prover must re-express every step it takes as polynomial constraints; a bit-oriented hash such as SHA-256 costs tens of thousands of constraints, whereas Sinsemilla's per-piece cost is a handful of curve operations chosen to lie in the same field the proof system already works over. One obtains a collision-resistant hash and commitment (used for note commitments and Merkle trees in Orchard) that is simultaneously cheap to prove and grounded in the same discrete-log hardness as the surrounding protocol. The presentation above is the conceptual core; the \emph{Orchard Guide} instantiates it concretely (piece width, the incomplete-addition caveats, and the exact domain strings).
+Sinsemilla's advantage is \emph{verification cost inside a proof}. In a SNARK, the prover must re-express every step it takes as polynomial constraints; a bit-oriented hash such as SHA-256 costs tens of thousands of constraints, whereas Sinsemilla's per-piece cost is a handful of curve operations chosen to lie in the same field the proof system already works over. One obtains a collision-resistant hash and commitment (used for note commitments and Merkle trees in Orchard) that is simultaneously cheap to prove and grounded in the same discrete-log hardness as the surrounding protocol. The presentation above is the conceptual core; the \emph{Ironwood Guide} instantiates it concretely (piece width, the incomplete-addition caveats, and the exact domain strings).
 \end{remark}
 
 \subsection{Polynomial commitment schemes}\label{commitments:subsec:poly}
@@ -3199,7 +3199,7 @@ Orchard has \emph{no} per-note value commitments: each Action commits once to it
 \[
   \mathrm{cv}^{\mathrm{net}} \;=\; \mathrm{cm}(v^{\mathrm{old}} - v^{\mathrm{new}},\, \rho) \;=\; [v^{\mathrm{old}} - v^{\mathrm{new}}]\,V + [\rho]\,P
 \]
-for the spent value \(v^{\mathrm{old}}\) and created value \(v^{\mathrm{new}}\) of that Action (\emph{Orchard Guide}), and the net commitment is the plain sum \(B = \sum_i \mathrm{cv}^{\mathrm{net},i}\) over the transaction's Actions. In either case, by homomorphism,
+for the spent value \(v^{\mathrm{old}}\) and created value \(v^{\mathrm{new}}\) of that Action (\emph{Ironwood Guide}), and the net commitment is the plain sum \(B = \sum_i \mathrm{cv}^{\mathrm{net},i}\) over the transaction's Actions. In either case, by homomorphism,
 \[
   B \;=\; [\Delta v]\,V \;+\; [\bar\rho]\,P,
 \]

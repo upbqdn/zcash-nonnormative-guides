@@ -27,7 +27,7 @@ VOLUME_META = [
     ("crypto-guide", "Foundations", "stable"),
     ("halo2-guide", "Foundations", "stable"),
     ("halo2-intuition-guide", "Foundations", "companion"),
-    ("orchard-guide", "Deployed protocol", "deployed"),
+    ("ironwood-guide", "Deployed protocol", "deployed"),
     ("wallet-guide", "Deployed protocol", "deployed"),
     ("sync-guide", "Deployed protocol", "deployed"),
     ("voting-guide", "Frontier", "frontier"),

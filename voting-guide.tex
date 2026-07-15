@@ -279,7 +279,7 @@ prose.
 nullifier derivation, \CommitIvk{}, the \Sinsemilla{} Merkle instance,
 RedPallas, the ZIP-244 sighash, and ZIP-32 key derivation --- each specified
 in the Zcash protocol specification and the ZIPs, constructed in the
-\emph{Orchard Guide} (\S``Representation of a note: notes and note
+\emph{Ironwood Guide} (\S``Representation of a note: notes and note
 commitments'', \S``Prevention of double-spending: nullifiers'', \S``Keys:
 capabilities for spending and for viewing'', \S``Proof of ownership of
 \emph{some} valid note: the commitment tree'', \S``Authorisation of the
@@ -482,7 +482,7 @@ five times --- and record the ``15'' as a stale count in the sources.}
 \item \emph{Real nullifier} (condition~12). The circuit derives the note's
   true Orchard nullifier
   $\nfsym = \mathsf{DeriveNullifier}_{\nksym}(\rho, \psi, \cmsym)$ --- the
-  deployed Orchard rule, constructed in the \emph{Orchard Guide}
+  deployed Orchard rule, constructed in the \emph{Ironwood Guide}
   (\S``Prevention of double-spending: nullifiers'') --- in-circuit and
   \emph{never publishes it}: it exists only as a private wire feeding
   conditions~13 and~14 (\texttt{circuit.rs:1682-1701}).
@@ -849,7 +849,7 @@ Poseidon hash of everything the delegation publishes,
 the arity-$7$ fixed-length instance (\texttt{rho\_binding\_hash},
 \texttt{circuit.rs:176-190}). Condition~2 then derives the keystone
 nullifier by the deployed Orchard rule --- constructed in the
-\emph{Orchard Guide} (\S``Prevention of double-spending: nullifiers'') ---
+\emph{Ironwood Guide} (\S``Prevention of double-spending: nullifiers'') ---
 \[
 \nfsym_{\mathrm{signed}} =
 \mathsf{DeriveNullifier}_{\nksym}\bigl(\rho_{\mathrm{signed}},\
@@ -866,7 +866,7 @@ commitments, the VAN, and the round identifier. Removing any link breaks
 the binding; this chain is why the chain-side acceptance of a
 client-provided sighash is safe. The remaining conditions are supporting:
 condition~4 proves $\rk = [\alpha]\,\mathsf{SpendAuthG} + \aksym$ for a
-witnessed randomizer $\alpha$ (the \emph{Orchard Guide},
+witnessed randomizer $\alpha$ (the \emph{Ironwood Guide},
 \S``Authorisation of the spend: RedPallas''); condition~5 ties $\aksym$,
 $\nksym$, and $\rivk$ to the same \CommitIvk{} chain the real-note slots
 use (\S\ref{sec:vote-zkp1}, condition~11); conditions~1 and~6 recompute
