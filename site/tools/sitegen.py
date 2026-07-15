@@ -33,6 +33,7 @@ VOLUME_META = [
     ("voting-guide", "Frontier", "frontier"),
     ("zsa-guide", "Frontier", "frontier"),
     ("tachyon-guide", "Frontier", "design-stage"),
+    ("crosslink-guide", "Frontier", "design-stage"),
 ]
 VOLUMES = [v for v, _, _ in VOLUME_META]
 

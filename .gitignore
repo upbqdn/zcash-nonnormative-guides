@@ -18,3 +18,5 @@
 *.ind
 *.run.xml
 *.bcf
+.wip/
+build/

@@ -48,6 +48,10 @@ Layered; read each atop the ones it names.
    synchronisation. Every claim is classified as /specified/,
    /designed-but-unspecified/, or /open problem/.
 
+8. *Crosslink Guide* (=crosslink-guide.tex=) — trailing finality: the
+   ebb-and-flow model, the Crosslink construction, stake and delegation,
+   and the wallet-visible contract two ledgers create.
+
 Compiled PDFs are committed alongside the sources.
 
 * Method
