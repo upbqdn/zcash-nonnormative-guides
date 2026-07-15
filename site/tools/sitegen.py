@@ -136,6 +136,12 @@ def vol_title(vol):
     return (m.group(1) if m else vol, m.group(2) if m else "")
 
 
+def ver():
+    return subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                          capture_output=True, text=True,
+                          cwd=ROOT).stdout.strip() or "0"
+
+
 def landing(outdir):
     groups, n = {}, 0
     for vol, group, chip in VOLUME_META:
@@ -164,7 +170,7 @@ def landing(outdir):
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Zcash Arboretum</title>
-<link rel="stylesheet" href="arboretum.css">
+<link rel="stylesheet" href="arboretum.css?v={ver()}">
 <link href="pagefind/pagefind-ui.css" rel="stylesheet">
 <script src="pagefind/pagefind-ui.js"></script>
 </head><body>
@@ -222,7 +228,9 @@ document.querySelector('details.arb-search').addEventListener('toggle',
         n = 0
         for page in vdir.glob("*.html"):
             t = page.read_text()
-            t2 = re.sub(r"<body", '<body data-arb="vol"', t, count=1)
+            t2 = t.replace('href="../arboretum.css"',
+                           f'href="../arboretum.css?v={ver()}"', 1)
+            t2 = re.sub(r"<body", '<body data-arb=\"vol\"', t2, count=1)
             t2 = re.sub(r"(<body[^>]*>)", r"\1" + bar.replace("\\", "\\\\"),
                         t2, count=1)
             t2 = t2.replace('class="ltx_page_content"',

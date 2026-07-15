@@ -171,7 +171,7 @@ main.arb-landing {
   background: var(--paper);
   padding: 0 .55em;
   color: var(--muted);
-  font-size: .85rem;
+  font-size: 1rem;
 }
 .arb-landing .tag { color: var(--muted); margin: 0 0 1.6rem; max-width: 38rem; }
 .arb-landing h2 {
@@ -343,18 +343,32 @@ body[data-arb="vol"] .ltx_page_main { grid-column: 2; width: 100%; }
   font-family: var(--mono); font-size: .68rem; color: var(--muted);
   margin-right: .15rem;
 }
+/* entries wrap; LaTeXML's nowrap would clip them at the column edge */
+.ltx_page_navbar a, .ltx_page_navbar span {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
 @media (max-width: 1099px) {
   body[data-arb="vol"] { display: block; }
   .ltx_page_navbar { display: none; }
 }
 
-/* content title block: ink, not link-green; subtitle quiet */
+/* content title block: ink, not link-green; subtitle quiet.
+   The heading may sit inside the anchor or contain it — cover both. */
+.ltx_page_main .ltx_title_document,
 .ltx_page_main .ltx_title_document a,
-.ltx_page_main .ltx_title_document { color: var(--ink); }
-.ltx_page_main .ltx_document > .ltx_title a { color: var(--ink); }
+.ltx_page_main a:has(.ltx_title_document),
+.ltx_page_main a .ltx_title_document { color: var(--ink); }
+.ltx_page_main a:has(.ltx_title_document):hover { text-decoration: none; }
 .ltx_subtitle, .ltx_page_main .ltx_title_document .ltx_text {
   color: var(--muted);
 }
+/* prev/next crumbs above the section title: quiet utility text */
+.ltx_page_main .ltx_page_header {
+  font-family: var(--mono); font-size: .7rem; letter-spacing: .05em;
+}
+.ltx_page_main .ltx_page_header a { color: var(--muted); }
+.ltx_page_main .ltx_page_header a:hover { color: var(--conifer); }
 
 /* retire the default footer logo (Sammy stays in the source tree) */
 .ltx_page_logo { display: none; }
