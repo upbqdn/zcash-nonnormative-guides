@@ -385,6 +385,26 @@ body[data-arb="vol"] .ltx_page_main { grid-column: 2; width: 100%; }
 /* retire the default footer logo (Sammy stays in the source tree) */
 .ltx_page_logo { display: none; }
 
+/* footer crumbs: same structure and treatment as the header row */
+.ltx_page_footer {
+  font-family: var(--mono); font-size: .7rem; letter-spacing: .05em;
+  border-top: 1px solid var(--edge);
+  margin-top: 2.8rem; padding: 1rem 0 2.2rem;
+}
+.ltx_page_footer > div {
+  display: flex; justify-content: space-between; gap: 1.5rem;
+  text-align: left;
+}
+.ltx_page_footer a { color: var(--muted); min-width: 0; }
+.ltx_page_footer a:hover { color: var(--conifer); }
+.ltx_page_footer a span { font-size: 1em !important; }
+.ltx_page_footer a[rel="up"], .ltx_page_footer a[rel="start"] {
+  display: none;
+}
+.ltx_page_footer a[rel="prev"]::before { content: "\2190  "; }
+.ltx_page_footer a[rel="next"]::after { content: "  \2192"; }
+.ltx_page_footer a[rel="next"] { margin-left: auto; }
+
 /* keyword/emph harmony */
 .ltx_text.ltx_font_typewriter { font-family: var(--mono); font-size: .92em; }
 .ltx_note { color: var(--muted); }
