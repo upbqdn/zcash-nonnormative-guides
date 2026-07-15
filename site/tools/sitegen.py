@@ -125,24 +125,38 @@ def webprep():
         print(f"prepared {WEBDIR / (vol + '.tex')}")
 
 
+ROMANS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+          "XI", "XII"]
+
+
+def vol_title(vol):
+    text = (ROOT / f"{vol}.tex").read_text()
+    m = re.search(r"\\title\{\\textbf\{\\Huge ([^}]*)\}\\\\\[6pt\]"
+                  r"\\large ([^}]*)\}", text)
+    return (m.group(1) if m else vol, m.group(2) if m else "")
+
+
 def landing(outdir):
-    groups = {}
+    groups, n = {}, 0
     for vol, group, chip in VOLUME_META:
         if not (ROOT / f"{vol}.tex").exists():
             continue
-        text = (ROOT / f"{vol}.tex").read_text()
-        m = re.search(r"\\title\{\\textbf\{\\Huge ([^}]*)\}\\\\\[6pt\]"
-                      r"\\large ([^}]*)\}", text)
-        title = m.group(1) if m else vol
-        sub = m.group(2) if m else ""
-        groups.setdefault(group, []).append(
-            f'<li><a href="{vol}/"><span class="t">{title}</span>'
-            f'<span class="s">{sub}</span></a>'
-            f'<span class="meta"><span class="chip c-{chip}">{chip}</span>'
-            f'<a class="pdf" href="pdf/{vol}.pdf">PDF</a></span></li>')
+        title, sub = vol_title(vol)
+        if chip == "companion":
+            acc = "companion plate"
+        else:
+            n += 1
+            acc = f"vol. {ROMANS[n - 1]}"
+        groups.setdefault(group, []).append(f"""<li class="plate">
+<div class="label"><span class="acc">{acc}</span>
+<span class="plaque">{chip}</span></div>
+<a class="title" href="{vol}/">{title}</a>
+<p class="sub">{sub}</p>
+<div class="links"><a href="{vol}/">Read</a>
+<a href="pdf/{vol}.pdf">PDF</a></div></li>""")
     cards = []
     for group, items in groups.items():
-        cards.append(f'<h3 class="grp">{group}</h3><ol class="vols">'
+        cards.append(f'<h3 class="grp">{group}</h3><ol class="plates">'
                      + "\n".join(items) + "</ol>")
     html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -152,11 +166,13 @@ def landing(outdir):
 <link href="pagefind/pagefind-ui.css" rel="stylesheet">
 <script src="pagefind/pagefind-ui.js"></script>
 </head><body>
-<main>
+<main class="arb-landing">
+<p class="eyebrow">a field guide to the shielded protocols</p>
 <h1>The Zcash Arboretum</h1>
+<hr class="stem">
 <p class="tag">Formal, full-depth, self-contained documentation of the Zcash
-protocol &mdash; the deployed Orchard core and the protocols growing on top of
-it. Non-normative: where these volumes and the
+protocol &mdash; the deployed core and the protocols growing on top of it.
+Non-normative: where these volumes and the
 <a href="https://zips.z.cash/protocol/protocol.pdf">protocol specification</a>
 disagree, the specification is correct.</p>
 <div id="search"></div>
@@ -165,7 +181,6 @@ window.addEventListener('DOMContentLoaded', () => {{
   new PagefindUI({{ element: '#search', showSubResults: true }});
 }});
 </script>
-<h2>Volumes</h2>
 {chr(10).join(cards)}
 <p class="foot">Sources and compiled PDFs:
 <a href="https://github.com/upbqdn/zcash-arboretum">github.com/upbqdn/zcash-arboretum</a></p>
@@ -177,6 +192,45 @@ window.addEventListener('DOMContentLoaded', () => {{
     print(f"wrote {out / 'index.html'}")
 
 
+def postprocess(outdir):
+    """Inject the site bar + search into every built volume page, scope the
+    search index to the document body, and drop LaTeXML's footer logo."""
+    out = Path(outdir)
+    for vol, _group, _chip in VOLUME_META:
+        vdir = out / vol
+        if not vdir.is_dir():
+            continue
+        title, _ = vol_title(vol)
+        bar = f"""<header class="arb-bar"><a class="wordmark" href="../">The
+Zcash Arboretum</a><span class="volname">{title}</span>
+<details class="arb-search"><summary>search</summary>
+<div class="arb-search-panel"><div id="arb-search-ui"></div></div></details>
+</header>
+<link href="../pagefind/pagefind-ui.css" rel="stylesheet">
+<script src="../pagefind/pagefind-ui.js"></script>
+<script>
+document.querySelector('details.arb-search').addEventListener('toggle',
+  function (e) {{
+    if (e.target.open && !window.__arbSearch) {{
+      window.__arbSearch = new PagefindUI({{ element: '#arb-search-ui',
+        showSubResults: true }});
+    }}
+  }});
+</script>"""
+        n = 0
+        for page in vdir.glob("*.html"):
+            t = page.read_text()
+            t2 = re.sub(r"(<body[^>]*>)", r"\1" + bar.replace("\\", "\\\\"),
+                        t, count=1)
+            t2 = t2.replace('class="ltx_page_content"',
+                            'class="ltx_page_content" data-pagefind-body',
+                            1)
+            if t2 != t:
+                page.write_text(t2)
+                n += 1
+        print(f"postprocessed {vol}: {n} pages")
+
+
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
     if mode == "render":
@@ -185,5 +239,7 @@ if __name__ == "__main__":
         webprep()
     elif mode == "landing":
         landing(sys.argv[sys.argv.index("--out") + 1])
+    elif mode == "postprocess":
+        postprocess(sys.argv[sys.argv.index("--out") + 1])
     else:
         sys.exit(__doc__)

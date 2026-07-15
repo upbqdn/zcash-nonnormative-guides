@@ -1,98 +1,311 @@
-/* The Zcash Arboretum — site shell. Light/dark via media query with a
-   data-theme override hook; monograph typography. */
+/* The Zcash Arboretum — site stylesheet.
+   Identity: herbarium plates and specimen labels; STIX Two Text (the
+   mathematical literature's face) for prose, Fraunces for display,
+   monospace small-caps for the brass-plaque labels. */
 
+/* ---------- faces ---------- */
+@font-face {
+  font-family: "Fraunces";
+  src: url("fonts/fraunces-latin-600-normal.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Fraunces";
+  src: url("fonts/fraunces-latin-700-normal.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "STIX Two Text";
+  src: url("fonts/stix-two-text-latin-400-normal.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "STIX Two Text";
+  src: url("fonts/stix-two-text-latin-400-italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "STIX Two Text";
+  src: url("fonts/stix-two-text-latin-600-normal.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+
+/* ---------- tokens ---------- */
 :root {
-  --bg: #fdfcfa;
-  --fg: #1e2226;
-  --muted: #5b646d;
-  --accent: #2a6b46;
-  --card: #f4f2ed;
-  --border: #e0dcd2;
-  --chip-stable: #2a6b46;
-  --chip-deployed: #1f5f8b;
-  --chip-frontier: #8a5a1f;
-  --chip-design: #7a3b6b;
+  --paper: #fcfcf9;      /* herbarium sheet */
+  --ink: #20261e;        /* green-black ink */
+  --muted: #5d6656;
+  --conifer: #2f5138;    /* interactive green */
+  --leafline: #b9c2ae;   /* pressed-stem rules */
+  --plate: #f5f6f0;      /* specimen card */
+  --edge: #dde1d4;
+  --plaque-ink: #4e5a45;
+  --serif: "STIX Two Text", "STIX Two Math", Charter, Georgia, serif;
+  --display: "Fraunces", "STIX Two Text", Georgia, serif;
+  --mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14171a;
-    --fg: #d8dde2;
-    --muted: #98a2ab;
-    --accent: #6fbf92;
-    --card: #1c2126;
-    --border: #2b3238;
+    --paper: #121610;    /* night garden */
+    --ink: #dbe0d2;
+    --muted: #96a189;
+    --conifer: #9dbe8d;
+    --leafline: #39422f;
+    --plate: #181d14;
+    --edge: #2a3223;
+    --plaque-ink: #aab99c;
   }
 }
 
+/* ---------- base ---------- */
+* { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: Charter, "Bitstream Charter", "Source Serif 4", Georgia, serif;
-  line-height: 1.55;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
 }
-main {
-  max-width: 46rem;
-  margin: 0 auto;
-  padding: 3rem 1.2rem 4rem;
+a { color: var(--conifer); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+:focus-visible {
+  outline: 2px solid var(--conifer);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
-h1 { font-size: 2.1rem; margin: 0 0 .4rem; letter-spacing: -.01em; }
-h2 { margin-top: 2.2rem; }
-h3.grp {
-  margin: 1.8rem 0 .5rem;
-  font-size: .95rem;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--muted);
-}
-p.tag { color: var(--muted); margin-top: 0; }
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
+::selection { background: var(--conifer); color: var(--paper); }
+code, kbd, pre { font-family: var(--mono); }
 
-ol.vols { list-style: none; margin: 0; padding: 0; }
-ol.vols li {
+/* ---------- the plaque (signature label) ---------- */
+.plaque {
+  font-family: var(--mono);
+  font-size: .64rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--plaque-ink);
+  border: 1px solid var(--leafline);
+  border-radius: 3px;
+  padding: .18rem .5rem .14rem;
+  white-space: nowrap;
+  background: transparent;
+}
+
+/* ---------- site bar (injected on every volume page) ---------- */
+.arb-bar {
   display: flex;
   align-items: baseline;
-  gap: .8rem;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: .7rem 1rem;
-  margin: .45rem 0;
+  gap: 1rem;
+  padding: .65rem 1.2rem;
+  border-bottom: 1px solid var(--edge);
+  background: color-mix(in srgb, var(--paper) 92%, var(--plate));
+  position: sticky; top: 0; z-index: 50;
 }
-ol.vols li > a { flex: 1; min-width: 0; }
-ol.vols .t { display: block; font-weight: 700; }
-ol.vols .s { display: block; font-size: .88rem; color: var(--muted); }
-ol.vols .meta { display: flex; align-items: center; gap: .6rem; }
-.chip {
-  font-family: ui-monospace, monospace;
+.arb-bar .wordmark {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ink);
+}
+.arb-bar .wordmark:hover { text-decoration: none; color: var(--conifer); }
+.arb-bar .volname {
+  font-family: var(--mono);
   font-size: .68rem;
-  padding: .12rem .45rem;
-  border-radius: 99px;
-  color: #fff;
-  white-space: nowrap;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.c-stable { background: var(--chip-stable); }
-.c-companion { background: var(--chip-stable); opacity: .75; }
-.c-deployed { background: var(--chip-deployed); }
-.c-frontier { background: var(--chip-frontier); }
-.c-design-stage { background: var(--chip-design); }
-a.pdf {
-  font-family: ui-monospace, monospace;
-  font-size: .75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .15rem .5rem;
+.arb-bar details.arb-search { position: relative; }
+.arb-bar details.arb-search summary {
+  list-style: none; cursor: pointer;
+  font-family: var(--mono); font-size: .72rem;
+  letter-spacing: .1em; color: var(--muted);
 }
-p.foot { margin-top: 2.5rem; font-size: .85rem; color: var(--muted); }
+.arb-bar details.arb-search summary::-webkit-details-marker { display: none; }
+.arb-bar details.arb-search[open] summary { color: var(--conifer); }
+.arb-bar .arb-search-panel {
+  position: absolute; right: 0; top: 1.8rem;
+  width: min(34rem, 88vw);
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: .8rem;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .12);
+}
 
-/* Overrides applied on top of LaTeXML's stylesheet inside volumes. */
-.ltx_page_main {
-  max-width: 50rem;
+/* ---------- landing ---------- */
+main.arb-landing {
+  max-width: 44rem;
   margin: 0 auto;
-  font-family: Charter, "Bitstream Charter", "Source Serif 4", Georgia, serif;
+  padding: 3.2rem 1.2rem 4.5rem;
 }
-@media (prefers-color-scheme: dark) {
-  .ltx_page_main, .ltx_page_content { background: var(--bg); color: var(--fg); }
-  .ltx_page_main a { color: var(--accent); }
+.arb-landing .eyebrow {
+  font-family: var(--mono);
+  font-size: .7rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 .6rem;
 }
+.arb-landing h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.3rem, 6vw, 3.1rem);
+  letter-spacing: -.015em;
+  line-height: 1.08;
+  margin: 0 0 .9rem;
+}
+.arb-landing .stem {
+  border: 0; height: 1px;
+  background: linear-gradient(to right, var(--leafline) 0 38%,
+              transparent 38% 41%, var(--leafline) 41% 43%,
+              transparent 43% 46%, var(--leafline) 46% 100%);
+  margin: 0 0 1.1rem;
+}
+.arb-landing .tag { color: var(--muted); margin: 0 0 1.6rem; max-width: 38rem; }
+.arb-landing h2 {
+  font-family: var(--display); font-weight: 600;
+  font-size: 1.35rem; margin: 2.6rem 0 .3rem;
+}
+.arb-landing h3.grp {
+  font-family: var(--mono);
+  font-size: .68rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 2rem 0 .6rem;
+  display: flex; align-items: center; gap: .7rem;
+}
+.arb-landing h3.grp::after {
+  content: ""; flex: 1; height: 1px; background: var(--leafline);
+}
+
+/* specimen plates */
+ol.plates { list-style: none; margin: 0; padding: 0; }
+ol.plates li.plate {
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: .85rem 1.05rem .8rem;
+  margin: .55rem 0;
+  transition: border-color .15s ease;
+}
+ol.plates li.plate:hover { border-color: var(--conifer); }
+@media (prefers-reduced-motion: reduce) {
+  ol.plates li.plate { transition: none; }
+}
+.plate .label {
+  display: flex; align-items: baseline; gap: .7rem;
+  margin-bottom: .28rem;
+}
+.plate .acc {
+  font-family: var(--mono);
+  font-size: .64rem;
+  letter-spacing: .16em;
+  color: var(--muted);
+  flex: 1;
+}
+.plate a.title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.22rem;
+  color: var(--ink);
+  display: block;
+}
+.plate a.title:hover { color: var(--conifer); text-decoration: none; }
+.plate .sub {
+  color: var(--muted);
+  font-size: .92rem;
+  margin: .15rem 0 .5rem;
+}
+.plate .links {
+  display: flex; gap: 1rem;
+  font-family: var(--mono); font-size: .72rem;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.arb-landing .foot {
+  margin-top: 3rem; font-size: .88rem; color: var(--muted);
+}
+
+/* pagefind widget tuning */
+:root {
+  --pagefind-ui-scale: .9;
+  --pagefind-ui-primary: var(--conifer);
+  --pagefind-ui-text: var(--ink);
+  --pagefind-ui-background: var(--plate);
+  --pagefind-ui-border: var(--edge);
+  --pagefind-ui-border-width: 1px;
+  --pagefind-ui-font: inherit;
+}
+
+/* ---------- volume pages: re-dress LaTeXML ---------- */
+.ltx_page_main {
+  max-width: 47rem;
+  margin: 0 auto;
+  padding: 0 1.2rem 4rem;
+  font-family: var(--serif);
+  background: var(--paper);
+  color: var(--ink);
+}
+.ltx_page_content { background: var(--paper); color: var(--ink); }
+.ltx_document { line-height: 1.62; }
+
+.ltx_title_document {
+  font-family: var(--display); font-weight: 700;
+  font-size: 2rem; line-height: 1.15;
+  margin: 2.2rem 0 1rem;
+}
+h2.ltx_title_section, .ltx_title_section {
+  font-family: var(--display); font-weight: 600;
+  font-size: 1.5rem; margin-top: 2.4rem;
+}
+h3.ltx_title_subsection, .ltx_title_subsection {
+  font-family: var(--display); font-weight: 600;
+  font-size: 1.18rem; margin-top: 1.8rem;
+}
+.ltx_tag_section, .ltx_tag_subsection { color: var(--muted); }
+
+/* theorem plates: same family as the specimen cards */
+.ltx_theorem {
+  background: var(--plate);
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--conifer);
+  border-radius: 4px;
+  padding: .7rem 1rem;
+  margin: 1.1rem 0;
+}
+.ltx_theorem .ltx_title { font-family: inherit; }
+.ltx_proof { margin: 1rem 0 1rem .2rem; padding-left: .9rem;
+             border-left: 1px solid var(--leafline); }
+
+/* math + tables breathe, never overflow the page */
+.ltx_equation, .ltx_equationgroup { overflow-x: auto; padding: .2rem 0; }
+.ltx_tabular { font-size: .95rem; }
+.ltx_tabular .ltx_td, .ltx_tabular .ltx_th { padding: .25rem .6rem; }
+.ltx_graphics { max-width: 100%; height: auto; }
+figure.ltx_figure { margin: 1.6rem 0; }
+figure.ltx_figure figcaption { color: var(--muted); font-size: .9rem; }
+
+/* TOC + navigation */
+.ltx_TOC { background: var(--plate); border: 1px solid var(--edge);
+           border-radius: 6px; padding: .9rem 1.1rem; }
+.ltx_TOC .ltx_toclist { margin: 0; padding-left: 1.1rem; }
+.ltx_TOC a { color: var(--ink); }
+.ltx_TOC a:hover { color: var(--conifer); }
+.ltx_page_navbar, nav.ltx_page_navbar {
+  font-family: var(--mono); font-size: .74rem;
+  letter-spacing: .06em;
+}
+.ltx_page_header, .ltx_page_footer {
+  border: 0; background: transparent; color: var(--muted);
+  font-size: .85rem;
+}
+
+/* retire the default footer logo (Sammy stays in the source tree) */
+.ltx_page_logo { display: none; }
+
+/* keyword/emph harmony */
+.ltx_text.ltx_font_typewriter { font-family: var(--mono); font-size: .92em; }
+.ltx_note { color: var(--muted); }
