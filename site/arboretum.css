@@ -304,21 +304,18 @@ h3.ltx_title_subsection, .ltx_title_subsection {
              border-left: 1px solid var(--leafline); }
 
 /* math + tables breathe, never overflow the page */
-.ltx_equation, .ltx_equationgroup, table.ltx_equation,
-.ltx_eqn_table, .ltx_eqn_div {
-  display: block; max-width: 100%;
+.ltx_equation, .ltx_equationgroup, table.ltx_equation, .ltx_eqn_table {
+  display: block; width: 100%; max-width: 100%;
   overflow-x: auto; overflow-y: hidden; padding: .2rem 0;
 }
-/* re-centre without LaTeXML's 50%-wide pad cells, which balloon rows
-   past the sheet; long equations scroll inside the block instead */
-.ltx_eqn_table tbody { display: block; width: max-content;
-                       margin: 0 auto; max-width: none; }
-.ltx_eqn_table tr { display: flex; align-items: baseline; }
+/* keep the inner rows a real (auto-sizing) table so centring works;
+   the block wrapper above provides the scroll when they are too wide.
+   Drop LaTeXML's 50%-wide pad cells, which force every row full-width. */
+.ltx_eqn_table > tbody { display: table; margin-inline: auto; }
 .ltx_eqn_cell.ltx_eqn_center_padleft,
 .ltx_eqn_cell.ltx_eqn_center_padright { display: none; }
-.ltx_p > math[display="block"] {
-  display: block; max-width: 100%; overflow-x: auto;
-}
+.ltx_p math[display="block"] { display: block; max-width: 100%; overflow-x: auto; }
+
 .ltx_tabular { font-size: .95rem; }
 .ltx_tabular .ltx_td, .ltx_tabular .ltx_th { padding: .25rem .6rem; }
 .ltx_graphics { max-width: 100%; height: auto; }
