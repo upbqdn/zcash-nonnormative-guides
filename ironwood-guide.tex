@@ -2040,8 +2040,10 @@ discarded; what changes is which pool new value may enter, and how an
 Ironwood note derives its trapdoor.
 
 As in \S\ref{sec:pq-orchard}, claims about deployed behaviour cite the
-implementation and the specification --- here crate \texttt{orchard} at \texttt{bef8a27}
-(crates.io; the version \texttt{librustzcash} pins), \texttt{librustzcash} at
+implementation and the specification --- here crate \texttt{orchard} at
+\texttt{bef8a27} (the unreleased 0.14.0 dev tree carrying the Ironwood work;
+\texttt{librustzcash} itself pins the published \texttt{orchard}~0.15.0 crate),
+\texttt{librustzcash} at
 commit \texttt{e30517e4}, and \texttt{protocol.tex} and the ZIPs at
 \texttt{zips} commit \texttt{69610984} --- and forward-looking claims carry
 one of the three epistemic bins \emph{specified}, \emph{designed but
@@ -2150,9 +2152,23 @@ personalisations for the Sapling and Orchard branches
 (\texttt{ZTxIdSSpendNH\_v6}, \texttt{ZTxAuthSapliH\_v6},
 \texttt{ZTxIdOrchardH\_v6}, and \texttt{ZTxAuthOrchaH\_v6}); an absent
 component
-hashes the empty string under its personalisation (ZIP-229; deployed in
-crate \texttt{orchard} at \texttt{bef8a27}, \texttt{bundle/commitments.rs}, and in
-\texttt{zcash\_primitives}, \texttt{transaction/txid.rs}). One structural change
+hashes the empty string under its personalisation (ZIP-229). This digest tree
+is \emph{specified}, not deployed at \texttt{bef8a27}: there crate
+\texttt{orchard}'s \texttt{bundle/commitments.rs} (\texttt{:7--11}) defines only
+five non-versioned personalisations ---
+\texttt{ZTxIdOrchardHash}, \texttt{ZTxIdOrcActCHash},
+\texttt{ZTxIdOrcActMHash}, \texttt{ZTxIdOrcActNHash},
+\texttt{ZTxAuthOrchaHash} --- and
+\texttt{hash\_bundle\_txid\_data} applies no per-pool or per-version
+personalisation dispatch --- its \texttt{format} argument feeds only the flags
+byte (\texttt{:62}) --- so none of the \texttt{\_v6} strings exist in
+\texttt{src/}. In \texttt{librustzcash} at \texttt{e30517e4} only the two
+Sapling personalisations \texttt{ZTxIdSSpendNH\_v6} and
+\texttt{ZTxAuthSapliH\_v6} are production in
+\texttt{zcash\_primitives}, \texttt{transaction/txid.rs} (lines $44$
+and $54$); the Orchard and Ironwood \texttt{\_v6} strings appear there only as
+expected empty-hash literals in \texttt{transaction/tests.rs}. One structural
+change
 rides along: v6 moves the Sapling, Orchard, and Ironwood \emph{anchors} from
 effecting data (under the txid) to authorizing data (under the auth digest,
 committed only when the component spends). A transaction can then be

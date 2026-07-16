@@ -1221,3 +1221,436 @@ firsthand cross-checks (voting-circuits `4c39abd`
 test `proposal_id_zero_fails` `circuit.rs:2599-2608`; vote-sdk `cb915f5`
 `x/vote/types/keys.go:43,48`, `msgs.go:127-128`) strengthen entry 21's evidence
 but add no new defect.
+
+---
+
+# Wave-2 model-diff findings (DRAFT — needs owner confirmation before filing)
+
+**DRAFT.** These 7 entries come from the Wave-2 breadth-first model-diff pass
+(2026-07-16), firsthand-cited but not yet owner-reviewed. Do not file upstream until
+each is confirmed. Numbering continues the dossier (33-39). Ground-truth pins:
+zebra-crosslink `6d02a1b` (HEAD = `6d02a1b80f896d08f923e39b2505f0565efb5787`);
+librustzcash `e30517e4`, `StakingAction` at ShieldedLabs rev `33dc74bf`; orchard
+`bef8a27`; tfl-book `fe6e1d6f`. All paths under zebra-crosslink are
+`zebra-crosslink/zebra-crosslink/…` unless noted `zebra-chain/…` / `zebra-state/…` /
+`zebra-consensus/…`.
+
+Severity spread: **4 high, 3 medium** — every entry a zebra-crosslink code bug on the
+BFT / finalization / staking path, again clustering on `lib.rs`
+`new_decided_bft_block_from_malachite` / `validate_bft_block_from_malachite`.
+
+**Dedup notes (this wave).** Raw yield was 12 findings; folded to 7:
+BftBlock.height index/fill-loop (raw 2+7 → **34**); empty-headers panic (raw 8+9 →
+**35**); decide-path Pass-assert on Indeterminate (raw 4+10 → **39**); reward-loop
+overflow + divide-by-zero (raw 6+12 → **38**). One raw finding (`BftBlock::try_from`
+unimplemented, `chain.rs:129-151`) is a **duplicate of Wave-1 entry 31** and is *not*
+re-filed; see the note after entry 39. Two entries are new failure-mode facets of
+already-drafted roots, flagged inline: **36** extends the unauthorized-roster-mutation
+root of #25 (theft/eviction of *others'* stake vs self-mint); **37** is a new
+mechanism in the finalization-safety family of #23/#27 (no best-chain constraint on
+the fin candidate). Genuinely new roots this wave: **33, 34, 35, 38, 39**.
+
+---
+
+## 33. zebra-crosslink — every finalizer's ed25519 signing key is derived deterministically from a public address string (forgeable roster)
+
+**DRAFT. Severity: high.**
+
+**Title:** `rng_private_public_key_from_address` derives each finalizer's ed25519
+private signing key from a public peer-address string via a non-cryptographic 64-bit
+`DefaultHasher` seed, so anyone who knows the (public) finalizer multiaddrs can
+recompute every roster private key and forge a full-quorum notarization
+
+**Body:**
+
+Every ed25519 signing key in the crate is a pure, publicly-computable function of a
+public string. `lib.rs:334-344` `rng_private_public_key_from_address(addr: &[u8])`:
+`let mut hasher = DefaultHasher::new(); hasher.write(addr); let seed =
+hasher.finish(); let mut rng = StdRng::seed_from_u64(seed); let private_key =
+MalPrivateKey::new(&mut rng); …`. `DefaultHasher` is std's fixed-key SipHash
+(`lib.rs:26`), so `seed` is deterministic; `MalPrivateKey` = `ed25519_zebra::SigningKey`
+(`malctx.rs:39`) and `lib.rs:341` is the **only** `MalPrivateKey::new` site in the
+crate — no secret is ever read from disk or config (Config `lib.rs:103-115` has no
+signing-key field; `insecure_user_name`'s own docstring reads "temp seed for
+private/public key pair").
+
+The roster is minted from public peer strings: `service.rs:125-128` iterates
+`config.malachite_peers` (docstring "List of public IP addresses for peers") and for
+each calls `rng_private_public_key_from_address(peer.as_bytes())`, pushing
+`MalValidator::new(public_key, 1)`. Each finalizer's own key comes from `user_name`
+(= `insecure_user_name`, else public address) at `lib.rs:1106-1114`. The resulting
+`my_private_key` is handed to `tenderlink::entry_point` (`lib.rs:1206`) and used to
+sign Precommit/Proposal ballots (`malctx.rs:571-586`
+`self.private_key.sign(&vote.to_bytes())`) — so the forgeable key *is* the real
+signing key.
+
+Spec: tfl-book `construction.md` @ `fe6e1d6f:153` "validator keys of honest nodes
+must remain secret indefinitely"; `:150-152` a compromised key casting non-honest
+units breaks the one-third bound and thus Final Agreement (`~:205`). Here no key is
+secret: all are recomputable from public inputs, and the 64-bit non-crypto seed makes
+brute force feasible even for a withheld address.
+
+Distinct from Wave-1 entry 22 (the *verify* side — notarization checks neither roster
+membership nor the 2/3 threshold): #22 is about the missing checks; this is that the
+keys those checks would authenticate against are themselves forgeable — a deeper,
+independent defect. Tied to entry 36 (staking commands also key off the same
+name-derived keypairs).
+
+**Failure mode.** Attacker enumerates the finalizer peer addresses from
+`config.malachite_peers` (network multiaddrs are public by construction), recomputes
+every roster `SigningKey` with the same derivation, and signs valid Precommit ballots
+as ≥2/3 of the roster over two conflicting `BftBlock` hashes at one height. Both fat
+pointers pass `validate_signatures()` (`lib.rs:532`) *and* any future roster/threshold
+check (the attacker holds genuine roster keys), so two honest nodes crosslink-finalize
+disagreeing blocks — Final Agreement (`construction.md:205`) violated.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:26,103-115,334-344,532,1106-1114,1206`;
+`service.rs:125-128`; `malctx.rs:39,571-586`); tfl-book `fe6e1d6f`
+(`construction.md:150-153,205`).
+
+---
+
+## 34. zebra-crosslink — attacker-controlled `BftBlock.height` drives an unbounded fill loop and a `usize` index base in the decided-block handler
+
+**DRAFT. Severity: high.**
+
+**Title:** `new_decided_bft_block_from_malachite` computes `insert_i =
+new_block.height as usize - 1` and a placeholder fill-loop bound from
+`BftBlock.height`, a raw attacker-controlled u32 that neither `zcash_deserialize` nor
+`validate_bft_block_from_malachite` bounds — so `height ∈ {0, huge, stale}` yields
+`usize` underflow, multi-billion-element allocation, or an index-mismatch assert, each
+fatal under `panic = "abort"`
+
+**Body:**
+
+The decided handler (`lib.rs:499`, wired as `ClosureToPushDecidedBlock`
+`lib.rs:1234-1247`, runs on every node at decision then crosslink-finalizes at `:581`)
+uses `new_block.height` unchecked: `lib.rs:546` `let insert_i = new_block.height as
+usize - 1;`; `lib.rs:549-561` `for i in internal.bft_blocks.len()..=insert_i { …
+internal.bft_blocks.push(BftBlock{ … }) }`; then `lib.rs:563-568`
+`assert_eq!(internal.bft_blocks[insert_i - 1].blake3_hash(),
+new_block.previous_block_fat_ptr.points_at_block_hash())` and `:570-575`
+`assert!(internal.bft_blocks[insert_i].headers.is_empty(), …)`. The fill loop runs
+**before** the asserts.
+
+`height` is read raw at `chain.rs:95` `let height =
+reader.read_u32::<LittleEndian>()?;` with no bound (only `header_count` is capped, at
+2048, `chain.rs:99-104`), and `validate_bft_block_from_malachite_already_locked`
+(`lib.rs:790-820`) never inspects it — it checks only prev-pointer linkage (`:798-807`)
+and that `headers.first()` is a known PoW block (`:809-819`), then returns `Pass`.
+`points_at_block_hash()` (`lib.rs:1944-1950`) is a hash of the *previous* block,
+independent of the new block's own `height`, so the linkage guard does not constrain
+it. A legitimate proposer sets `height = bft_blocks.len() + 1` (`lib.rs:445`); a
+Byzantine proposer's raw bytes (deserialized at `lib.rs:1242`) carry any value, and
+`blake3_hash()` serializes the whole struct incl. height (`chain.rs:81,166-178`) so a
+genuinely-decided Byzantine block passes the `:523` hash-binding and `:532` signature
+checks and reaches `:546`. `Cargo.toml` `[profile.release]` sets `panic = "abort"`
+with no `overflow-checks`, so subtraction wraps in release and every panic hard-aborts
+the process.
+
+Distinct from Wave-1 entry 24 (explicit `panic!()` at 529/534/1248) and entry 26
+(`finalization_candidate_height = 0`): the vector here is the unbounded fill loop /
+`usize` underflow driven by the separate `height` field. Folds raw Wave-2 findings 2
+and 7.
+
+**Failure mode.** A round's proposer sets `previous_block_fat_ptr` to the current BFT
+tip (so validate → Pass) but an adversarial `height`: `height = 0` → `0usize - 1`
+underflows (panic in debug; `usize::MAX` → multi-billion-element push → OOM abort in
+release); `height = u32::MAX` → ~4.3×10⁹ `BftBlock` pushes → OOM; `height = len + 2`
+→ one placeholder pushed, then `assert_eq!` at `:564` compares the empty placeholder's
+hash to the real previous pointer and panics. Every honest node crashes simultaneously
+on the same decided value — network-wide halt from one Byzantine proposer.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:445,499,523,532,546-575,581,790-820,
+1234-1247,1242,1944-1950`; `chain.rs:81,95,99-104,166-178`; `Cargo.toml:201-202`).
+
+---
+
+## 35. zebra-crosslink — a `BftBlock` with zero PoW headers deserializes and panics every validating node on the pre-vote path
+
+**DRAFT. Severity: high.**
+
+**Title:** `BftBlock::zcash_deserialize` bounds `header_count` only from above
+(rejects >2048, accepts 0), and `validate_bft_block_from_malachite` dereferences
+`headers.first().expect("at least 1 header")` — so a proposal with `header_count = 0`
+aborts every validator pre-vote under `panic = "abort"`
+
+**Body:**
+
+`ZcashDeserialize for BftBlock` (`chain.rs:98-108`) reads `header_count`, rejects only
+`> 2048` (`chain.rs:99-104`), then loops `for i in 0..header_count` — so `header_count
+= 0` yields `Ok(BftBlock { headers: [] })`. The exactly-σ invariant lives only in
+`BftBlock::try_from` (`chain.rs:136-140`), which the deserialize path never calls (its
+own `TODO` at `chain.rs:48`: "Ensure deserialization delegates to
+`BftBlock::try_from`").
+
+The proposal-validation closure `ClosureToValidateProposedBlock` (`lib.rs:1220-1231`)
+deserializes untrusted proposal bytes and calls `validate_bft_block_from_malachite` →
+`_already_locked` (`lib.rs:790-820`), whose only guard before the dereference is the
+prev-pointer hash compare (`:798-807`, no signature check, no header-count check);
+then `lib.rs:809` `let new_final_hash = new_block.headers.first().expect("at least 1
+header").hash();` panics on the empty Vec. At genesis `internal.fat_pointer_to_tip =
+FatPointerToBftBlock2::null()` (`service.rs:158`), whose `points_at_block_hash()` is
+`[0;32]` (`lib.rs:1878-1883,1944-1950`); an attacker's matching null previous pointer
+makes the `:798` guard pass. The crosslink validate path does **no** signature
+verification (sigs are checked only on the decided path, `lib.rs:532-534`), so the
+panic is reached pre-vote with no valid signatures. `Cargo.toml` `[profile.dev]`/
+`[profile.release]` both `panic = "abort"`; no `catch_unwind` guards the closure; the
+spawn at `lib.rs:1205` is unconditional.
+
+Distinct from Wave-1 entries 23/16 (first-vs-last / σ-depth semantics) — this is the
+empty-Vec deserialize + unwrap on the untrusted proposal path. Folds raw Wave-2
+findings 8 and 9.
+
+**Failure mode.** Any malachite participant proposes `BftBlock{
+previous_block_fat_ptr = current tip fat ptr (satisfies the :798 hash check),
+headers: [] }`. It serializes (`header_count = 0`) and deserializes fine; on every
+validator, `ClosureToValidateProposedBlock` → `validate_bft_block_from_malachite` →
+`lib.rs:809` `.first().expect(…)` panics → process abort. One malformed proposal =
+fleet-wide DoS, no valid signatures required. (Decided-path twins at `lib.rs:543` and
+the assert at `:575` corroborate the empty-Vec assumption but require valid sigs.)
+
+Observed at zebra-crosslink `6d02a1b` (`chain.rs:48,98-108,125,136-140`;
+`lib.rs:532-534,543,575,790-820,809,1205,1220-1231,1878-1883,1944-1950`;
+`service.rs:158`; `Cargo.toml:173,202`).
+
+---
+
+## 36. zebra-crosslink / librustzcash — a finalized staking transaction can subtract, zero, or MOVE any existing finalizer's voting power to an attacker key with no authorization
+
+**DRAFT. Severity: high.**
+
+**Title:** `StakingAction` carries no signature and `update_roster_for_cmd` performs
+no submitter authorization, so a `VCrosslink` staking tx built from public finalizer
+*name strings* can evict (`Sub`/`Clear`) or steal (`Move`/`MoveClear`) another
+finalizer's entire BFT voting power — theft of *others'* stake, not just self-mint
+
+**Body:**
+
+`StakingAction` (librustzcash `zcash_primitives/src/transaction/mod.rs:1381-1389` @
+rev `33dc74bf`) has **no** signature field (`kind, val, target, source,
+insecure_target_name, insecure_source_name`); `hash_to_state` (`:1390`) writes the
+fields into a sighash state but nothing verifies a signature against it for a staking
+tx. Keys are name-derived: `parse_from_cmd` (`:1414-1519`) runs the same
+`rng_private_public_key_from_address` as entry 33 over the command's name strings, so
+`source`/`target` are fixed keypairs recoverable from a victim's *public name*.
+
+`update_roster_for_cmd` (`lib.rs:988-1061`) applies commands with no submitter check:
+`Sub`/`Clear` → operate on `action.target`; `Move`/`MoveClear` → subtract from
+`action.source` and add to `action.target` (`:1050-1058`). For `is_clear`, `amount =
+member.voting_power - action.val` (`:1044`), so `val = 0` zeroes the victim regardless
+of its power (the `:1035` guard always passes at `val = 0`). `update_roster_for_block`
+(`lib.rs:1063-1081`) applies every finalized tx's staking action unconditionally, from
+the real decided-block callback (`lib.rs:724`). Consensus never authenticates it:
+`has_inputs_and_outputs` (`zebra-consensus src/transaction/check.rs:124-130`) returns
+`Ok(())` for any `VCrosslink` with `staking_action.is_some()`, and
+`verify_v5_transaction` (`transaction.rs:529-536`, body `972-997`) inspects only
+transparent/Sapling/Orchard bundles — a staking tx has none. A grep for
+authorization/signature tied to staking/roster/voting returns empty.
+
+Spec: tfl-book `goals.md:17` "PoS consensus providers … cannot steal those
+[delegated] funds"; `potential-changes.md:287` validators must hold stake to vote.
+
+Distinct from Wave-1 entry 25 (unbacked self-mint via `Add`) and entry 22 (roster keys
+trusted): same missing-authorization root as #25, but the exploitation direction here
+is **theft/eviction of other validators' existing stake** via `Sub`/`Clear`/`Move`/
+`MoveClear`, sharpened by the name-derived keys of entry 33. Filed as a new entry for
+those failure modes; owner may choose to merge into #25's root when filing.
+
+**Failure mode.** Attacker broadcasts `VCrosslink{ staking_action:
+parse_from_cmd("MCL|0|attacker|victimname") }` (MoveClear victim → attacker). It passes
+mempool + consensus (no inputs needed), is mined and BFT-finalized, and every node's
+`update_roster_for_cmd` moves the victim's entire `voting_power` to the attacker's key.
+Repeat across honest finalizers → attacker gains a BFT supermajority (finalize
+arbitrary blocks / halt finalization). `"CLR|0|victimname"` instead zeroes an honest
+finalizer, evicting it. No victim private key is needed — keys are name-derived.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:724,988-1061,1063-1081`;
+`zebra-consensus src/transaction/check.rs:124-130`, `src/transaction.rs:529-536,
+972-997`); librustzcash rev `33dc74bf` (`zcash_primitives/src/transaction/mod.rs:
+1381-1389,1390,1414-1519`); tfl-book `fe6e1d6f` (`goals.md:17`,
+`potential-changes.md:287`).
+
+---
+
+## 37. zebra-crosslink — the proposal-validation closure never constrains the finalization candidate to the best chain, so a Byzantine proposer can force a reorg onto an attacker fork
+
+**DRAFT. Severity: medium.**
+
+**Title:** `validate_bft_block_from_malachite` accepts any `KnownBlock` as the
+finalization candidate (`headers.first()`) with no best-chain-membership, σ-depth, or
+descent check, and discards the `KnownBlock.location` (BestChain/SideChain)
+discriminator; on decide, `crosslink_finalize` drops every chain not containing that
+hash — forcing all honest nodes onto an attacker-chosen fork
+
+**Body:**
+
+`validate_bft_block_from_malachite_already_locked` (`lib.rs:798-820`) imposes only a
+BFT-linkage check (`:798-807`, prev-pointer hash) and existence of `headers.first()`
+at some PoW height (`:809-819`), then returns `Pass`. It never compares the candidate
+height to tip−σ, never checks best-chain membership, and never checks descent from the
+previous final block. The location discriminator is available but thrown away:
+`block_height_from_hash` (`lib.rs:185-193`) matches `StateResponse::KnownBlock(Some(kb))`
+and returns only `kb.height`, dropping `kb.location` — which is exactly BestChain vs
+SideChain (`zebra-state src/service/read/find.rs:142-161`
+`non_finalized_state_contains_block_hash` returns `SideChain` for side-chain blocks;
+`service.rs:1166-1184` `Request::KnownBlock` = non-finalized (any chain) OR finalized
+DB). This validate closure is the sole proposal-validity predicate before precommit
+(`lib.rs:1220-1233`).
+
+On decide, `new_decided_bft_block_from_malachite` recomputes `new_final_hash =
+headers.first().hash()` (`lib.rs:543`) and issues `CrosslinkFinalizeBlock`
+(`lib.rs:581`). `crosslink_finalize` (`zebra-state
+src/service/non_finalized_state.rs:264-292`) does `find_chain(|c|
+c.height_by_hash(hash).is_some())` then `chain_set.retain(|c|
+c.contains_block_hash(hash))` (`:276`) — dropping every chain, including the current
+best chain, not containing the hash; `write.rs:342-375` then commits the retained
+prefix to the permanent finalized DB and rebroadcasts the new tip. The depth guard is
+disabled (`lib.rs:545` commented out), and `BftBlock::try_from`'s documented
+validations remain a stub (`chain.rs:129-151`, used only by the local proposer,
+`lib.rs:443`).
+
+New mechanism in the finalization-safety family of Wave-1 entry 23 (σ−1 depth) and
+entry 27 (no-rollback `updatefin`): the specific novel gap is that the *validate*
+closure never constrains the candidate to the canonical best chain, and the
+`KnownBlock.location` field that would allow it is discarded. Owner may file under the
+same finalization-safety root.
+
+**Failure mode.** A Byzantine proposer sets `headers.first()` to a valid PoW block on a
+competing (non-best) fork present in nodes' non-finalized state (or one shallower than
+σ). `validate` → `Pass` (block is a `KnownBlock`, prev pointer matches the BFT tip);
+≥2/3 honest finalizers precommit; on decide, `crosslink_finalize` retains only the fork
+containing that block and drops the current best chain — every honest node reorgs onto
+the attacker-chosen fork (double-spend / shallow-finalization enabler).
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:185-193,443,543,545,581,798-820,
+1220-1233`; `chain.rs:129-151`; `zebra-state src/service/read/find.rs:142-161`,
+`src/service.rs:1166-1184`, `src/service/non_finalized_state.rs:264-292`,
+`src/service/write.rs:342-375`).
+
+---
+
+## 38. zebra-crosslink — unchecked u64 accumulation of attacker-controlled `val` in the reward/roster loop overflows (debug: node-wide abort; release: wrap → divide-by-zero / corrupted quorum)
+
+**DRAFT. Severity: medium.**
+
+**Title:** The finalizer-reward loop accumulates `total_voting_power` / `voting_power`
+with plain `+=` over an attacker-supplied, uncapped `val` (up to `u64::MAX`); a large
+`Add`, or sums that are a multiple of 2⁶⁴, overflow the accumulator — hard-aborting
+every node in debug, or wrapping `total_voting_power` to 0 and dividing by zero at
+`lib.rs:695` in release
+
+**Body:**
+
+Accumulation is plain u64: `lib.rs:655` `let mut total_voting_power = 0;` then `:672`
+`total_voting_power += finalizer.voting_power;`; `:697` `finalizer.voting_power +=
+reward;`; `:718` `finalizer.voting_power += rem_reward;` (with `pos_total_reward =
+6000`, `:631`); `:487` roster-builder sum; `:1053` `member.voting_power += amount;`,
+`:1055` `MalValidator::new(add_key.0, amount)`. Only the multiply was hardened (`:692`
+`// TODO: most numerically stable version of this that won't overflow`, cast to u128);
+every `+=` stayed u64. The loop relies on an invariant it can break: `:690` `// NOTE:
+total_voting_power must be non-0 if we have any non-0 roster members`, feeding
+`:695`/`:706` `let reward = (mul / (total_voting_power as u128)) as u64;`.
+
+`val` is unbounded: librustzcash rev `33dc74bf` `zcash_primitives/src/transaction/
+mod.rs:1383` `pub val: u64`, `parse_from_cmd` does `str::parse::<u64>` with no cap and
+`read` does `u64::from_le_bytes` with no bound; `zebra-consensus
+src/transaction/check.rs:124-130` returns `Ok` early for staking txs (no value cap),
+and the `Add` path in `update_roster_for_cmd` has no bound (the `:1035` guard is only
+on the `Sub`/`Clear` path). The reward loop runs on every node via
+`ClosureToPushDecidedBlock` (`lib.rs:1234-1247`) → deterministic re-execution. Both
+`[profile.dev]` and `[profile.release]` set `panic = "abort"`; release sets no
+`overflow-checks` (silent wrap). `malctx.rs:737-739` `total_voting_power()` sums
+`voting_power` and feeds malachite's quorum threshold, so a wrapped total corrupts BFT
+quorum math.
+
+Distinct from Wave-1 entries 24/28 (a new panic/wrap *site* on the reward/roster path)
+and entry 25 (self-mint authorization); enabled by #25's uncapped, unauthorized `val`.
+Folds raw Wave-2 finding 12 (the divide-by-zero facet).
+
+**Failure mode.** Attacker submits `Add` with `val = u64::MAX` (or two `Add`s of ~2⁶³
+to two keys). At finalization: **debug** (`debug-assertions` + `panic = "abort"`) →
+`total_voting_power += …` (`:672`) or `voting_power += rem_reward` (`:718`) panics
+"attempt to add with overflow" → hard abort on every node re-executing the finalized
+block → deterministic consensus halt. **Release** → two ADDs summing to 2⁶⁴ wrap
+`total_voting_power` to 0; the non-max finalizer branch hits `mul / 0` at `:695` →
+divide-by-zero (panics even in release) → abort; lesser wraps silently corrupt
+`total_voting_power()`/quorum at `malctx.rs:738` and can trip the `:708`
+`assert!(reward <= rem_reward)`.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:487,631,655,672,690-697,706-718,
+1020,1035,1053-1055,1234-1247`; `malctx.rs:737-739`; `zebra-consensus
+src/transaction/check.rs:124-130`; `Cargo.toml:172,201`); librustzcash rev `33dc74bf`
+(`zcash_primitives/src/transaction/mod.rs:1383`).
+
+---
+
+## 39. zebra-crosslink — the decided-block handler's `assert_eq!(validate…, Pass)` and height `.unwrap()` abort the node on a legitimately-`Indeterminate` block (benign catch-up / reorg race)
+
+**DRAFT. Severity: medium.**
+
+**Title:** `new_decided_bft_block_from_malachite` re-validates a decided block with a
+hard `assert_eq!(…, TMStatus::Pass)` and `block_height_from_hash(…).unwrap()`, but
+`validate` returns the recoverable `Indeterminate` exactly when the referenced PoW
+block is locally absent — so a validator behind on PoW sync (or after a benign reorg
+prunes the candidate) aborts on otherwise-legitimate consensus output
+
+**Body:**
+
+The decide handler asserts validation equals `Pass` (`lib.rs:537-541`) then unwraps the
+height (`lib.rs:543-544` `block_height_from_hash(&call, new_final_hash).await
+.unwrap()`). But `validate_bft_block_from_malachite_already_locked` returns
+`Indeterminate` precisely when the referenced PoW block is absent: `lib.rs:809-819`
+`if let Some(h) = block_height_from_hash(…) { h.0 } else { warn!(…); return
+Indeterminate }`, and `block_height_from_hash` returns `None` whenever `KnownBlock` is
+`None` (`lib.rs:185-192`) — i.e. the hash is in neither the non-finalized state nor the
+finalized DB (`zebra-state src/service.rs:1166-1183`, `read/find.rs:142-180`). The
+internal mutex (`lib.rs:507`) does not lock zebra-state, so the PoW-block set can change
+between vote and decide. `assert_eq!` is not stripped in release; both dev and release
+set `panic = "abort"` (`Cargo.toml:173,202`), so the assert/unwrap abort the whole
+process.
+
+Reachability is benign, not just adversarial: the proposer picks the finalization
+candidate at `bc_confirmation_depth_sigma = 3` below its own tip (`chain.rs:220`,
+`lib.rs:379-381,414-439`), so `headers.first()` is a very recent PoW block. A validator
+momentarily behind on PoW propagation (or briefly partitioned from block relay but
+connected to BFT peers) returns `Indeterminate` at both vote and decide time; when the
+≥2/3 who have the block drive it to a decision, tenderlink delivers the decided block to
+the lagging node → `assert_eq!(Indeterminate, Pass)` aborts (or `.unwrap()` at `:544`
+hits `None`). The sibling `force_feed_pos` (`service.rs:172-181`) *does* gate on
+`== Pass` before calling the handler — proving maintainers know non-`Pass` at decide
+time is possible — yet the tenderlink `ClosureToPushDecidedBlock` path (`lib.rs:1234-1247`)
+omits the gate. The `:529`/`:534` `panic!()`s (Wave-1 entry 24) are for
+malformed/malicious blocks and do not preempt an honest, well-signed block whose only
+problem is local PoW-block absence.
+
+Distinct from Wave-1 entry 24 (explicit `panic!()` at 529/534/1248, on malformed
+input): same handler, different lines (537 assert, 544 unwrap) and a benign trigger
+(honest catch-up / reorg timing). Folds raw Wave-2 findings 4 and 10. The Crosslink
+Guide describes the vote-path check accurately (`crosslink-guide.tex:2319-2334`) and
+even invites adversarial review of BFT/PoW-reorg interleaving — the guide is not wrong;
+the defect is in the code.
+
+**Failure mode.** A validator votes for a proposal whose finalization candidate it has
+not yet synced (or which sits on a short-lived side chain pruned before decision);
+`block_height_from_hash` → `None` → `validate` → `Indeterminate` →
+`assert_eq!(Indeterminate, Pass)` panics (or `.unwrap()` at `:544` panics) → the node
+crashes on benign consensus output. Also weaponizable by proposing a block referencing
+a header peers lack.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:185-192,379-381,414-439,499,507,
+529,534,537-544,809-819,1234-1247`; `chain.rs:220`; `service.rs:172-181`;
+`zebra-state src/service.rs:1166-1183`, `src/service/read/find.rs:142-180`;
+`Cargo.toml:173,202`); crosslink-guide.tex:2319-2334.
+
+---
+
+**Not re-filed — duplicate of Wave-1 entry 31.** A raw Wave-2 finding
+(`BftBlock::try_from` documents four stateless validations — count = σ, known version,
+header ordering, PoW-solution validity — but implements only the header-count check,
+logs `error!("not yet implemented: all the documented validations")` at `chain.rs:142`,
+hard-codes `version: 1`, and `zcash_deserialize` bypasses the constructor entirely —
+`chain.rs:129-151,92-118,48`) is the same defect as dossier entry 31. The Wave-2
+firsthand cross-checks (doc contract `chain.rs:33-38`; deserialize/decide paths
+`lib.rs:1226,1242` never calling `try_from`; no PoW/version/ordering check on
+`headers[1..σ]`) strengthen entry 31's evidence but add no new defect.

@@ -228,3 +228,96 @@ line citations in the same guide spot-checked correct.
 
 **The fix.** Change the citation at `zsa-guide.tex:690` from `zip-0227.rst:303--308`
 to `zip-0227.rst:224`.
+
+---
+
+## Wave 2
+
+Wave-2, 2026-07-16. Same model-diff method as Wave-0/1.
+
+Volumes touched (guide-fix bin): Ironwood. Bin totals: **2 guide-fixes** (1 high,
+1 medium). Both are Ironwood `DEPLOYED-at-bef8a27` over-attributions in the same
+class as Wave-1 G4/G5: the guide's spec paraphrase and reasoning are sound, but it
+pins v6-digest and provenance facts to orchard `bef8a27` (v0.14.0) that are not true
+at that commit. G7 continues the finding that the Ironwood NU6.3 API is unreleased
+dev on 0.14.0; G8 corrects the "version librustzcash pins" provenance (librustzcash
+actually pins the published orchard **0.15.0** crate, not `bef8a27`). Both firsthand
+re-confirmed: orchard `bef8a27` = `0.14.0-18-gbef8a27`, zero `_v6`/Ironwood
+personalization strings in `src/`; librustzcash `e30517e4` `Cargo.lock` and workspace
+`Cargo.toml` both pin `orchard = 0.15.0`.
+
+### Priority worklist
+
+| # | Sev | Volume : section | Area |
+|---|-----|------------------|------|
+| G7 | high | Ironwood : `sec:iw` "The Ironwood pool" (v6 digest ¶) | Full NU6.3 v6/Ironwood txid+auth BLAKE2b personalizations claimed DEPLOYED at orchard `bef8a27`; none exist there (introduced in 0.15.0) |
+| G8 | medium | Ironwood : `sec:iw-pools` provenance sentence | "orchard `bef8a27` … the version librustzcash pins" — librustzcash pins orchard 0.15.0; `bef8a27` is 0.14.0 |
+
+---
+
+### G7 — v6/Ironwood txid+auth personalizations claimed DEPLOYED at orchard `bef8a27`; none exist there (high)
+
+**Volume : section.** Ironwood Guide, §`sec:iw` "The Ironwood pool", the v6-digest
+paragraph — `ironwood-guide.tex:2146-2155`.
+
+**What's wrong.** The paragraph lists the full NU6.3 v6/Ironwood BLAKE2b txid+auth
+personalizations — `ZTxIdIronwd_H_v6`, `ZTxIdIrnActCH_v6`, `ZTxIdIrnActMH_v6`,
+`ZTxIdIrnActNH_v6`, `ZTxAuthIrnwdH_v6`, plus revised Sapling/Orchard-branch
+`ZTxIdSSpendNH_v6`, `ZTxAuthSapliH_v6`, `ZTxIdOrchardH_v6`, `ZTxAuthOrchaH_v6` — and
+attributes them all as "deployed in crate `orchard` at `bef8a27`,
+`bundle/commitments.rs`, and in `zcash_primitives`, `transaction/txid.rs`". At
+`bef8a27` (`git describe` = `0.14.0-18-gbef8a27`) **none** of these strings exist.
+`src/bundle/commitments.rs` there defines only five non-versioned 16-byte
+personalizations — `ZTxIdOrchardHash`, `ZTxIdOrcActCHash`, `ZTxIdOrcActMHash`,
+`ZTxIdOrcActNHash`, `ZTxAuthOrchaHash` — and `hash_bundle_txid_data(bundle, format)`
+applies no per-pool/version personalization dispatch (`format` feeds only the flags
+byte). No Ironwood txid function exists; `git grep _v6 bef8a27 -- src/` and
+`git grep 'ZTxIdIronwd\|ZTxIdIrnAct\|ZTxAuthIrnwd' bef8a27 -- src/` both return zero
+hits (re-confirmed); there is no 0.15.0 tag in the local repo. Secondary: in
+librustzcash `zcash_primitives/src/transaction/txid.rs` @ `e30517e4` only the two
+Sapling v6 personalizations are production (`ZTxIdSSpendNH_v6:44`,
+`ZTxAuthSapliH_v6:54`); the Orchard/Ironwood `_v6` strings appear only as expected
+literals in `tests.rs` (`ZTxAuthOrchaH_v6:125`, `ZTxIdOrchardH_v6:159`,
+`ZTxIdIronwd_H_v6:160`), never in production code. Same class as Wave-1 G4/G5
+(Ironwood `DEPLOYED-at-bef8a27` over-attribution), distinct passage (the v6 digest
+personalizations rather than note format / version enums).
+
+**The fix.** Re-scope the v6-digest paragraph from DEPLOYED to spec/planned: keep the
+ZIP-229 personalization list as the spec statement it is, but drop the "deployed in
+crate `orchard` at `bef8a27`, `bundle/commitments.rs`" attribution (the five strings
+there are the non-versioned `ZTxIdOrchardHash` set, not the `_v6` set), and scope the
+`zcash_primitives`/`txid.rs` cite to the two Sapling `_v6` personalizations that are
+actually production — noting the Orchard/Ironwood `_v6` strings exist there only as
+test vectors.
+
+---
+
+### G8 — "orchard `bef8a27`, the version librustzcash pins" — librustzcash pins 0.15.0 (medium)
+
+**Volume : section.** Ironwood Guide, `sec:iw-pools` provenance sentence —
+`ironwood-guide.tex:2043-2045`, echoed at `2481-2483`.
+
+**What's wrong.** The provenance sentence grounds Ironwood-pool "deployed behaviour"
+on "crate `orchard` at `bef8a27` (crates.io; the version `librustzcash` pins)", and
+`2481-2482` confirms the pin as "crate `orchard` at git commit `bef8a27e` (v0.14.0,
+2026-06-16)". But `bef8a27` is not the orchard version librustzcash `e30517e4` depends
+on: that tree's `Cargo.lock` pins `orchard` `version = "0.15.0"` from
+`registry+…crates.io` (checksum `cca2ede6…`), and its workspace `Cargo.toml` requires
+`orchard = { version = "0.15.0", … }` (both re-confirmed firsthand). Meanwhile orchard
+`bef8a27` is `version = "0.14.0"` (`git describe` = `0.14.0-18-gbef8a27`), with the
+NU6.3/Ironwood API staged in `CHANGELOG.md` `[Unreleased]`, not a release. So the git
+commit the guide cites (0.14.0 + unreleased Ironwood) and the crate librustzcash
+actually pins (published 0.15.0) are different artifacts; the parenthetical "the
+version librustzcash pins" is false. Interacts with Wave-0 G2: G2 flagged the guide's
+bare "orchard 0.15.0" citation as pointing at a release absent from the *local orchard
+repo* — this finding shows the complement, that 0.15.0 *was* published (librustzcash's
+lockfile references it with a checksum) and is the true pin, while the `bef8a27` git
+commit the guide equates with that pin is the separate unreleased 0.14.0 tree.
+
+**The fix.** Correct the parenthetical: `bef8a27` is orchard **0.14.0 + unreleased
+Ironwood dev**, *not* the version librustzcash pins (that is the published **0.15.0**
+crate on crates.io). Either cite `bef8a27` as the unreleased dev tree the guide reads
+the Ironwood code from and separately note librustzcash pins the released 0.15.0, or
+drop the "the version librustzcash pins" clause. Apply at `2043-2045` and `2481-2483`,
+and reconcile with G2's fix so the guide's orchard-version story is internally
+consistent.
