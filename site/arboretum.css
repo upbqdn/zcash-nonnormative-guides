@@ -437,6 +437,14 @@ body[data-arb="vol"] .ltx_page_main { grid-column: 2; width: 100%; }
 .ltx_page_footer a[rel="next"]::after { content: "  \2192"; }
 .ltx_page_footer a[rel="next"] { margin-left: auto; }
 
+/* mobile: stack the prev/next crumbs so long section titles never collide */
+@media (max-width: 640px) {
+  .ltx_page_main .ltx_page_header > div,
+  .ltx_page_footer > div { flex-direction: column; gap: .35rem; }
+  .ltx_page_main .ltx_page_header a[rel="next"],
+  .ltx_page_footer a[rel="next"] { margin-left: 0; }
+}
+
 /* keyword/emph harmony */
 .ltx_text.ltx_font_typewriter { font-family: var(--mono); font-size: .92em; }
 .ltx_note { color: var(--muted); }
