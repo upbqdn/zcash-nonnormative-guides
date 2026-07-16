@@ -626,3 +626,598 @@ overlooks this second one — a guide gap to fix alongside filing this defect.
 Observed at voting-circuits `4c39abd` (`src/delegation/README.md:300`;
 `src/vote_proof/circuit.rs:124-127,143,156`); vote-sdk `cb915f5`
 (`x/vote/types/keys.go:48`, `x/vote/types/msgs.go:42-43`).
+
+---
+
+# Wave-1 model-diff findings (DRAFT — needs owner confirmation before filing)
+
+**DRAFT.** These 11 entries come from the Wave-1 breadth-first model-diff pass
+(2026-07-16), firsthand-cited but not yet owner-reviewed. Do not file upstream
+until each is confirmed. Numbering continues the dossier (22-32). Ground-truth
+pins unchanged: zebra-crosslink `6d02a1b` (verified HEAD =
+`6d02a1b80f896d08f923e39b2505f0565efb5787`); orchard `bef8a27`; tfl-book
+`fe6e1d6f`; voting-circuits `4c39abd`; vote-sdk `cb915f5`. All paths under
+zebra-crosslink are `zebra-crosslink/zebra-crosslink/…` unless noted `zebra-chain/…`
+/ `zebra-state/…` / `zebra-consensus/…`.
+
+Severity spread: **2 high, 4 medium, 5 low** — a step up from Wave-0 (whose
+ceiling was medium). Both highs and all four mediums are zebra-crosslink code
+bugs in the BFT / finalization path; several cluster on one file (`lib.rs`).
+
+**Dedup notes.** This wave's raw yield was 16 findings; four pairs/triples were
+folded: notarization (raw 6+13+15 → **22**), fin-extraction depth off-by-one
+(raw 4+10 → **23**), `finalization_candidate_height = 0` (raw 5+14 → **26**). A
+16th raw finding (voting-circuits README "16 proposals") is a **duplicate of
+Wave-0 entry 21** and is *not* re-filed here; see the note after entry 32.
+
+---
+
+## 22. zebra-crosslink — BFT notarization verification enforces neither roster membership nor the 2/3 supermajority (and accepts an empty signature set)
+
+**DRAFT. Severity: high.**
+
+**Title:** Fat-pointer / notarization verification only batch-verifies ed25519
+signatures against keys carried in the fat pointer itself — no roster check, no
+2/3-voting-power threshold, and an empty signature set verifies as valid
+
+**Body:**
+
+The decided-BFT-block handler `new_decided_bft_block_from_malachite`
+(`lib.rs:499-620`, invoked via `ClosureToPushDecidedBlock` at `lib.rs:1234-1247`,
+which crosslink-finalizes the block through `CrosslinkFinalizeBlock` at `:581`)
+gates acceptance on exactly one cryptographic check: `lib.rs:531-535`,
+`// TODO: check public keys on the fat pointer against the roster` immediately
+followed by `if fat_pointer.validate_signatures() == false { error!(…); panic!(); }`.
+There is no summation of voting power and no 2/3 comparison anywhere in the
+function; a whole-crate grep for `two-thirds|supermajority|2/3|threshold|quorum`
+finds only PoW `difficulty_threshold`.
+
+`validate_signatures()` (`lib.rs:1933-1943`, byte-identical copy at
+`malctx.rs:217-227`) builds an `ed25519_zebra::batch::Verifier`, and for each
+`(vote, signature)` from `self.inflate()` queues `(vk_bytes =
+vote.validator_address.0, sig, msg = vote.to_bytes())`, returning
+`batch.verify().is_ok()`. `inflate()` (`lib.rs:1922-1932`) sets
+`vote.validator_address = MalPublicKey2(MalPublicKey::from(s.public_key))` — the
+verification key is read from the *same* `FatPointerSignature2 { public_key:
+[u8;32], vote_signature: [u8;64] }` (`lib.rs:1989-1991`) that carries the
+signature. So the check is tautological under attacker-chosen keys: it proves
+only "these are valid signatures by these keys", never that the keys are roster
+members or that their weight meets 2/3. Independently, an **empty** signature set
+verifies as `Ok(())`: with `self.signatures == []` the batch is empty, so (ed25519-zebra
+4.1.0 `batch.rs` `verify()`) `B_coeff = Scalar::ZERO`, `check =
+vartime_multiscalar_mul(once(&0), once(&B)) = identity`, and
+`identity.mul_by_cofactor().is_identity()` is true — `null()` (`lib.rs:1878-1883`)
+constructs exactly such a pointer.
+
+The sibling assertion `validate_bft_block_from_malachite_already_locked`
+(`lib.rs:790-820`) adds no protection — it checks only prev-block fat-pointer
+linkage (`:798-807`) and that the final hash exists at some PoW height
+(`:809-819`), then returns `TMStatus::Pass`. `voting_power` /
+`validators_at_current_height` are used only for the malachite-bug roster
+workaround (`:464`, `:510`), reward apportionment (`:654-718`), and roster-update
+commands (`:988-1074`) — never to validate a fat pointer.
+
+This is the load-bearing check the guide's Assured-Finality safety proof depends
+on: `crosslink-guide.tex:1611-1622`/`2440-2443` require "at least a two-thirds
+absolute supermajority of the epoch's voting units to have been cast for a
+proposal P", tracing verbatim to tfl-book `construction.md` @ `fe6e1d6f:129`,
+`156-161`. The guide is faithful to the spec; the deployed handler has no
+enforcement behind it. (The guide flags only the roster-check TODO at `2331-2333`,
+not the missing threshold or the empty-batch gap.)
+
+**Failure mode.** Forge `FatPointerToBftBlock2` for target block `B` (blake3 =
+`H`): set `vote_for_block_without_finalizer_public_key[0..32] = H` (clears the
+`:523` hash-binding check), then for each slot generate a fresh ed25519 keypair
+`(sk_i, pk_i)` never in the roster, build `vote` with `validator_address = pk_i`,
+sign `msg = vote.to_bytes()` with `sk_i`, and push `FatPointerSignature2 {
+public_key: pk_i, vote_signature: sig_i }`. `validate_signatures()` batch-verifies
+each `sig_i` against `pk_i` and returns `true`; a roster minority holding <2/3, or
+an empty set entirely, passes identically. The target block is crosslink-finalized
+on a forged notarization. Real-world reachability of this handler depends on
+`tenderlink` (a private git dep, quorum-enforced upstream of the predicate today),
+but the verification step itself is provably incomplete the moment it faces
+untrusted input.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:499-620,523-535,1878-1883,1922-1943,
+1989-1991`; `malctx.rs:217-227`); ed25519-zebra 4.1.0 `batch.rs verify()`; tfl-book
+`fe6e1d6f` (`construction.md:129,156-161`).
+
+---
+
+## 23. zebra-crosslink — the block that gets finalized is one confirmation shallower than the code's own computed candidate (σ−1, not σ)
+
+**DRAFT. Severity: high.**
+
+**Title:** The decided-block handler finalizes `headers.first()` (= tip−σ+1)
+instead of the spec's `snapshot(B) = headers_bc[0]⌈¹` (that header's parent, at
+tip−σ); `propose_new_bft_block` computes the correct candidate at tip−σ and then
+discards it
+
+**Body:**
+
+`propose_new_bft_block` computes the correct finalization candidate:
+`finality_candidate_height = tip_height.sub(bc_confirmation_depth_sigma)` = T−σ
+(`lib.rs:379-381`) and fetches `candidate_hash` at exactly that height
+(`lib.rs:414-416`). But it then uses `candidate_hash` only as the
+`FindBlockHeaders` anchor (`lib.rs:425-429`). `FindBlockHeaders` returns headers
+*strictly after* the anchor and in ascending order: `zebra-state
+src/service/read/find.rs:392-397` sets `start_height = intersection_height + 1`,
+`:414` `height_range = start..=final` ascending, `:485-490` asserts "the list
+must not contain the intersection hash". With `MAX_FIND_BLOCK_HEADERS_RESULTS =
+160` (`constants.rs:110`) ≥ σ and σ = 3 (`chain.rs:220`), `headers = [T−σ+1 … T]`,
+so the anchor block (T−σ) is *excluded* and `headers[0]` is the deepest returned
+header at T−σ+1. `new_decided_bft_block_from_malachite` then finalizes
+`new_final_hash = new_block.headers.first().hash()` = T−σ+1 (`lib.rs:543-544`) and
+issues `CrosslinkFinalizeBlock(new_final_hash)` (`lib.rs:579-587`). The spec
+finalizes `snapshot(B) := headers_bc[0]⌈¹_bc` — the *parent* of the deepest
+header, at depth σ (tfl-book `construction.md` @ `fe6e1d6f:420-428`;
+`candidate(H) := lca(snapshot(LF(H)), H⌈^σ)` at `:434`; the fin-depth lemma
+`:490-495`, `:510-513` requires the finalized point at depth ≥ σ for Assured
+Finality). So the code finalizes the deepest *header itself* (depth σ−1), one
+block too shallow, and the correcting assert `lib.rs:545`
+(`// assert_eq!(new_final_height.0, new_block.finalization_candidate_height)`) is
+commented out.
+
+This is distinct from Wave-0 entry 16 (the `headers.first()` vs
+`finalization_candidate() = headers.last()` accessor disagreement): the off-by-one
+persists even if that first/last split is reconciled, because the correct target
+is `headers.first().parent`, not either end of the vector. The guide's own
+header-order bullet carries a TODO admitting the direction is unresolved
+(`crosslink-guide.tex:~2345`), while `1725-1731` states the correct rule ("The
+snapshot is the parent of the deepest supplied header").
+
+A related second-order effect: `is_improved_final` (`lib.rs:404`) gates on
+`cand_height > latest` (height-only), comparing T−σ against the previously
+recorded T′−σ+1, so finality only advances when the tip grows by ≥2 blocks — if
+PoW yields exactly one block per BFT round, no proposal is emitted and finality
+stalls by a block until a 2-block gap appears.
+
+**Failure mode.** With σ = 3 and PoW tip at height T, every decided BFT block
+finalizes T−2 (2 confirmations) rather than the intended candidate/snapshot at
+T−3 (3 confirmations). T−2 is not ⪯ H⌈^σ = T−3, violating the σ-confirmation
+invariant the Assured Finality proof depends on — every finalization is one
+confirmation shallower than the protocol's safety margin, and the code holds the
+correct answer (`candidate_hash` = T−3) and throws it away.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:379-381,404,414-429,543-545,
+579-587`; `zebra-state src/service/read/find.rs:392-397,414,485-490,526`;
+`constants.rs:110`; `chain.rs:220`); tfl-book `fe6e1d6f`
+(`construction.md:420-428,434,490-495,510-513`).
+
+---
+
+## 24. zebra-crosslink — consensus-path callbacks `panic!()` instead of returning an error (liveness/DoS)
+
+**DRAFT. Severity: medium.**
+
+**Title:** The tenderlink historical-block closure is an unconditional
+`panic!()`, and the decided-block handler `panic!()`s on fat-pointer
+hash-mismatch / signature-failure — both abort the node instead of rejecting
+
+**Body:**
+
+`tfl_service_main_loop` (spawned at `service.rs:207`) unconditionally spawns
+`tenderlink::entry_point` at `lib.rs:1205` with a set of closures — the spawn
+sits in the plain block opened at `:1116`, with no `TEST_MODE`/`cfg(test)`/validator
+gate between `:1099` and `:1205` (the only `TEST_MODE` branch, `run_tfl_test` at
+`:1098`, is separate). Two closures abort the process:
+
+1. **Historical-block closure**, `lib.rs:1248-1252`:
+   `ClosureToGetHistoricalBlock(Arc::new(move |height| Box::pin(async move {
+   panic!(); })))` — the body ignores `height` and is an unconditional panic stub.
+   A complete working alternative, `async fn get_historical_bft_block_at_height`
+   (`lib.rs:843-861`, bounds-checks height, clones the block, builds the fat
+   pointer, returns `Option`), sits a few hundred lines away and has **zero
+   callers** (repo-wide grep) — dead code.
+
+2. **Decided-block handler** `new_decided_bft_block_from_malachite`
+   (body of `ClosureToPushDecidedBlock` at `:1234-1247`): `panic!()` at
+   `lib.rs:529` when `fat_pointer.points_at_block_hash() != new_block.blake3_hash()`,
+   and `panic!()` at `:534` when `fat_pointer.validate_signatures() == false`.
+
+That this is a defect, not a simplification, is confirmed by the sibling
+`ClosureToValidateProposedBlock` at `lib.rs:1220-1233`, which returns
+`tenderlink::TMStatus::Fail` on undeserializable input — the codebase knows the
+graceful-reject pattern; these two callbacks do not use it.
+
+**Failure mode.** When tenderlink asks this node for a historical decided BFT
+block (normal catch-up sync of a lagging peer), the closure panics and the node
+crashes — a remotely-reachable liveness failure with a ready alternative left
+unused. Separately, any decided value delivered with a malformed/invalid fat
+pointer crashes the node via `:529`/`:534` rather than being rejected.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:843-861,529,534,1205,1220-1233,
+1234-1252`; `service.rs:207`). Distinct from Wave-0 entries 15 (`try_from_bytes`
+reversed range) and 16 (fin `first`/`last`): this is the panic-on-failure pattern
+in registered consensus callbacks.
+
+---
+
+## 25. zebra-consensus / zebra-crosslink — BFT voting power (roster) is mutated by staking transactions that are neither stake-backed nor per-action authorized
+
+**DRAFT. Severity: medium.**
+
+**Title:** A zero-input/zero-output `VCrosslink` staking transaction passes
+`has_inputs_and_outputs` and adds arbitrary `voting_power` to an
+attacker-chosen finalizer key — no locked ZEC, no signature by the target key,
+power-of-10 rule unenforced
+
+**Body:**
+
+Design (nutshell.md / guide) requires the roster to be both value-backed and
+key-authorized: `zebra-crosslink book/src/design/nutshell.md:96,98,102,104` — a
+finalizer's voting weight is the sum of staking positions, each needing a
+finalizer verification key + staked ZEC, with an unstaking/redelegation key
+authorizing changes; `:86` amounts must be powers of 10 ZAT;
+`crosslink-guide.tex:2386-2388` "Crosslink's finality vote is stake-weighted".
+
+The implementation binds none of this. (1) `zebra-consensus
+src/transaction/check.rs:124-130` `has_inputs_and_outputs` returns `Ok(())` for
+any `VCrosslink` with `staking_action.is_some()` (comment "TODO: real staking
+transactions with inputs/outputs") — a zero-input/zero-output tx is accepted.
+(2) `lib.rs:948-965` `push_staking_action_from_cmd_str` builds exactly that tx:
+`inputs: Vec::new()`, `outputs: Vec::new()`, both shielded `None`,
+`staking_action = StakingAction::parse_from_cmd(cmd_str)`. (3) `lib.rs:988-1061`
+`update_roster_for_cmd` Add path: `amount = action.val`; `member.voting_power +=
+amount` or `roster.push(MalValidator::new(add_key.0, amount))` where `add_key =
+action.target` parsed from the command string — no value binding, no signature by
+the target key; the power-of-10 rule is unenforced (grep for
+`pow(10`/`ilog10`/`%10` in consensus = none). (4) `lib.rs:697,718` add rewards
+straight into `voting_power`. (5) `zebra-consensus src/transaction.rs:573-575`
+hard-codes the `VCrosslink` fee ("TODO: remove this complete @Hack").
+
+Crux: `malctx.rs:706-718` `MalValidator` implements
+`malachitebft_core_types::Validator`, `voting_power()` returning the field, and
+`lib.rs:458-464` serves `validators_at_current_height` as Malachite's current
+validator set. So this field *is* the BFT vote weight (and the reward weight,
+`lib.rs:654`).
+
+**Failure mode.** Any party broadcasts a zero-value, zero-input `VCrosslink`
+staking tx whose `staking_action` adds a large `val` to a finalizer key it
+controls. It passes `has_inputs_and_outputs` (no coins required) and
+`verify_v5_transaction` (nothing to verify), and every node's
+`update_roster_for_cmd` raises that key's `voting_power`. One unbacked,
+unauthenticated transaction can seize a supermajority of the roster.
+
+Observed at zebra-crosslink `6d02a1b` (`zebra-consensus src/transaction/check.rs:124-130`,
+`src/transaction.rs:573-575`; `lib.rs:458-464,654,697,718,948-965,988-1061`;
+`malctx.rs:706-718`; `book/src/design/nutshell.md:86,96,98,102,104`).
+
+---
+
+## 26. zebra-crosslink — `BftBlock.finalization_candidate_height` is hard-coded 0 on every proposed (and therefore every decided) block, and committed into the block's BLAKE3 identity
+
+**DRAFT. Severity: medium.**
+
+**Title:** `propose_new_bft_block` passes the literal `0` as the
+`finalization_candidate_height` argument to `BftBlock::try_from`, discarding the
+tip−σ it just computed; the field is serialized into the block hash and the
+reconciling assert is disabled
+
+**Body:**
+
+`propose_new_bft_block` computes the real candidate `finality_candidate_height =
+tip_height.sub(bc_confirmation_depth_sigma)` = tip−σ (`lib.rs:379-391`) and uses
+it for the header request (`:414`) and the `is_improved_final` gate (`:404`), but
+threads the literal `0` into the block: `lib.rs:443-449`, `BftBlock::try_from(params,
+internal.bft_blocks.len() as u32 + 1, internal.fat_pointer_to_tip.clone(), 0,
+headers)` — the 4th positional arg binds to `finalization_candidate_height`
+(signature `chain.rs:129-135`). `try_from` validates only `headers.len() ==
+bc_confirmation_depth_sigma` (`chain.rs:136-140`), logs `error!("not yet
+implemented: all the documented validations")` (`:142`), and echoes the value
+verbatim into the struct (`:148`). So `0` flows through unreconciled. The field
+is documented "The height of the PoW block that is the finalization candidate"
+(`chain.rs:70-71`) and is serialized on the wire (`chain.rs:83`
+`write_u32(self.finalization_candidate_height)`, deserialized `:97`) and into the
+block's BLAKE3 identity (`From<&BftBlock> for Blake3Hash`, `chain.rs:166-178`).
+The decided handler carries the block through unchanged (`lib.rs:577`), so every
+*decided* block also advertises `0`.
+
+The reconciling consistency check `lib.rs:545`
+(`// assert_eq!(new_final_height.0, new_block.finalization_candidate_height)`) is
+commented out; with the field pinned at 0 it reduces to "(height of
+`headers.first()`) == 0", unsatisfiable off genesis — which is why it is
+disabled. This is a distinct root cause from Wave-0 entry 16 (which attributed the
+disabled assert to the tip=first vs deepest=last split at σ>1): the field being
+hard-coded 0 makes the assert unsatisfiable even at σ=1 where first==last.
+
+That 0 is a bug, not intent, is corroborated by `zebrad/tests/crosslink.rs:687-691`
+(the test author populates the field with a real
+`pow_blocks[0].coinbase_height().0`) and by the commented-out backfill at
+`viz.rs:830-843` treating 0 as a known "unset" sentinel to repair.
+
+**Failure mode.** Given tip H and σ=3, the proposer builds a `BftBlock` whose
+`finalization_candidate_height` is 0 instead of H−3, committed into the block's
+BLAKE3 identity hash, and the documented invariant (assert at `lib.rs:545`) is
+permanently unsatisfiable. Any consumer reading the field mislocates the
+finalization point at genesis — live today in a dev tool: `viz.rs:3028,3041,3330`
+anchor decided blocks at height 0.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:379-391,404,414,443-449,545,577`;
+`chain.rs:70-71,83,97,129-135,136-148,166-178,220`; `viz.rs:830-843,3028,3041,3330`;
+`zebrad/tests/crosslink.rs:687-691`).
+
+---
+
+## 27. zebra-crosslink — the finalization path implements none of the book's `updatefin` no-rollback safety logic (no descendant check, no rollback on state error, no hazard record)
+
+**DRAFT. Severity: medium.**
+
+**Title:** `is_improved_final` gates only on strictly-greater height, the decided
+handler sets `latest_final_block` unconditionally before the state call and never
+rolls it back on `Err`, and no finalization-safety hazard is ever recorded
+
+**Body:**
+
+The book's `updatefin` (tfl-book `construction.md` @ `fe6e1d6f:477-486`) is: `N
+:= candidate(ch); if N ⪰ localfin then localfin ← N; else keep old, and if N ⋠
+localfin record a finalization-safety hazard` (`:471-473`, hazard record includes
+`ch` + fin history, `:488`). The guide reproduces this (def `xl-updatefin`,
+`crosslink-guide.tex:1977-1994`) and claims the deployed `latest_final_block`
+mirrors the book's node-local `fin_i` state machine (`4147-4153`).
+
+The deployment implements none of the safety logic. `is_improved_final`
+(`lib.rs:403-404`, in the *propose* path) = `latest.is_none() || cand_height >
+latest.0` — height-only, no descendant/ancestry check. The *decide* handler
+`new_decided_bft_block_from_malachite` sets `internal.latest_final_block =
+Some((new_final_height, new_final_hash))` **unconditionally** (`lib.rs:579`),
+before the state call and with no ⪰/descendant check; on state `Err` it only
+`error!(?err)` (`:581-593`) and leaves `latest_final_block` set — no rollback.
+`tfl_set_finality_by_hash` (`lib.rs:1476`) is likewise unconditional ("TODO:
+sanity checks"). A grep across `zebra-crosslink/src` for
+`hazard`/`rollback`/`descendant`/`conflicts` logic returns zero hits. The state
+layer offers no protection either: `zebra-state non_finalized_state.rs:264-292`
+`crosslink_finalize` uses `find_chain(|c| c.height_by_hash(hash).is_some())` —
+*any* chain, no descendant-of-previous check — returning `None` if absent, and
+`write.rs:342-380` returns `Err("Couldn't find finalized block")` on
+None-and-not-in-DB, which the crosslink side only logs.
+
+This is orthogonal to the guide's already-noted "Linearity/Extension/LFS rules
+not enforced" (those are proposal/block-validity rules, `crosslink-guide.tex:2329-2330`);
+the `updatefin` no-rollback check is a separate fin-extraction mechanism the guide
+does not flag as dropped.
+
+**Failure mode.** A conflicting candidate at strictly greater height (a bc-reorg
+deeper than σ, or a subverted/equivocating BFT — the exact break Crosslink's fin
+logic is meant to survive) passes the height-only gate; `latest_final_block` is
+overwritten with no descendant check and no hazard record. When that hash is on a
+fork already pruned/uncommitted, `CrosslinkFinalizeBlock` returns `Err` but
+`latest_final_block` still points at the never-committed block — the service
+reports a finalized tip inconsistent with the committed chain and silently omits
+the Assured-Finality hazard the book requires.
+
+Observed at zebra-crosslink `6d02a1b` (`lib.rs:403-404,579,581-593,1476`;
+`zebra-state non_finalized_state.rs:264-292`, `write.rs:342-380`); tfl-book
+`fe6e1d6f` (`construction.md:471-473,477-486,488`).
+
+---
+
+## 28. zebra-crosslink — `FatPointerToBftBlock{,2}::zcash_deserialize` pre-allocates from a 2-byte attacker length, bypassing `TrustedPreallocate` (memory-amplification DoS)
+
+**DRAFT. Severity: low.**
+
+**Title:** The fat-pointer deserializer runs `Vec::with_capacity(len)` on a
+2-byte attacker-controlled signature count (up to ~6.3 MB) before reading a
+single signature byte, hand-rolling around Zebra's `TrustedPreallocate`
+DoS-hardening
+
+**Body:**
+
+`FatPointerToBftBlock::zcash_deserialize` (`zebra-chain
+src/block/header.rs:251-252`) reads `let len = reader.read_u16::<LittleEndian>()?;`
+then immediately `let mut signatures: Vec<FatPointerSignature> =
+Vec::with_capacity(len.into());` — the allocation runs before any signature byte
+is read (identical duplicate `FatPointerToBftBlock2` at `lib.rs:1972-1973`).
+`FatPointerSignature = { public_key: [u8;32], vote_signature: [u8;64] }`
+(`header.rs:127-133`), size 96, so `with_capacity(0xFFFF)` reserves 65535·96 =
+6,291,360 bytes.
+
+This bypasses the codebase's own DoS convention:
+`zebra-chain src/serialization/zcash_deserialize.rs:79-99`
+`zcash_deserialize_external_count` checks `external_count > T::max_allocation()`
+and returns `SerializationError::Parse("Vector longer than max_allocation")`
+*before* its `Vec::with_capacity` (`:95`); the trait docstring (`:178-183`) calls
+blind preallocation of a generic `Vec<T>` "a DOS vector". The idiomatic
+`impl<T> ZcashDeserialize for Vec<T>` (`:23-32`) routes through that checked path
+via CompactSize, but the FatPointer deserializer hand-rolls a raw `u16` read +
+`Vec::with_capacity`, so `FatPointerSignature` never uses `TrustedPreallocate` and
+no `max_allocation` bound applies. `Block::zcash_deserialize`'s
+`.take(MAX_BLOCK_BYTES)` (`serialize.rs:190`) does not help: the allocation
+happens on the 2-byte `len` alone, before signature bytes are read.
+
+Reachability is v5+ only: `Header::zcash_deserialize` calls the fat-pointer
+deserializer when `logical_version >= 5` (`serialize.rs:124-126`), and
+`check_version` (`:36-62`) accepts version 5. Normal Zcash blocks are v4
+(`ZCASH_BLOCK_VERSION = 4`), so current exposure is the Crosslink/regtest network;
+if Crosslink ships it becomes every block-header parse.
+
+**Failure mode.** A peer sends a v5 header whose 44-byte fat-pointer stub is
+followed by `len = 0xFFFF` then EOF. The deserializer reads the stub, reads
+`len = 65535`, allocates `Vec::with_capacity(65535)` = 6.29 MB, then the loop's
+first `read_exact` of 96 bytes fails with `UnexpectedEof` and the Vec is dropped —
+~6.3 MB transient allocation from a 46-byte input (≈136,769× amplification), per
+header, pre-validation.
+
+Observed at zebra-crosslink `6d02a1b` (`zebra-chain src/block/header.rs:127-133,
+251-252`; `lib.rs:1972-1973`; `zebra-chain src/serialization/zcash_deserialize.rs:23-32,
+79-99,178-183`; `zebra-chain src/block/serialize.rs:36-62,124-126,190`).
+
+---
+
+## 29. zebra-crosslink — `TF::read_from_bytes` panics on corrupt/adversarial `.zeccltf` files instead of returning `Err`
+
+**DRAFT. Severity: low.**
+
+**Title:** `read_from_bytes` (contract `Result<Self, String>`) slices with the
+file-supplied `instrs_o` offset without any bounds or ordering check, so a
+malformed offset panics
+
+**Body:**
+
+`test_format.rs:376` `pub fn read_from_bytes(bytes: &[u8]) -> Result<Self, String>`
+is contracted to signal failure gracefully. The write side computes a valid
+offset `instrs_o = align_up(size_of::<TFHdr>() + self.data.len(),
+align_of::<TFInstr>())` (`:332-336`), but the read side never bounds-checks the
+raw file field `tf_hdr.instrs_o` before two slices:
+`<[TFInstr]>::ref_from_prefix_with_elems(&bytes[tf_hdr.instrs_o as usize..], …)`
+(`:382-383`) and `let data = &bytes[size_of::<TFHdr>()..tf_hdr.instrs_o as usize];`
+(`:392`). `TFHdr` (`magic[u8;8] + u64 + u32 + u32`, `repr(C)`) has
+`size_of == 24` (`:9-16`).
+
+Non-test reachability: `TF::read_from_file` (`viz.rs:3751`, with graceful `Err(err)
+=> error!(…)` at `:3766`) and `read_instrs` (`test_format.rs:675`) both do a plain
+`std::fs::read` then `read_from_bytes`, with no validation guard.
+
+**Failure mode.** A file with `instrs_o = 0` (< `size_of::<TFHdr>() = 24`) makes
+`bytes[24..0]` a reversed range → panic "slice index starts at 24 but ends at 0";
+`instrs_o` greater than the file length → out-of-bounds slice panic "range start
+index N out of range for slice of length M". Any tooling loading an untrusted or
+corrupt crosslink-test-data file aborts instead of returning `Err`.
+
+Observed at zebra-crosslink `6d02a1b` (`test_format.rs:9-16,332-336,376,382-383,392,
+675`; `viz.rs:3751,3766`).
+
+---
+
+## 30. zebra-crosslink — `TF` write/read `data` field does not round-trip (padding is captured into `data`)
+
+**DRAFT. Severity: low.**
+
+**Title:** `write()` pads the data region up to `align_of::<TFInstr>()` before the
+instruction table, but `read_from_bytes` reconstructs `data` as
+`bytes[24..instrs_o]`, which includes that padding — so `read(write(tf)).data !=
+tf.data` whenever `data.len() % 8 != 0`
+
+**Body:**
+
+Write pads and emits zero bytes between data and the instruction table:
+`test_format.rs:332` `instrs_o_unaligned = size_of::<TFHdr>() + self.data.len()`;
+`:333` `instrs_o = align_up(instrs_o_unaligned, align_of::<TFInstr>())`; `:344`
+writes `self.data`; `:347-352` if `instrs_o > instrs_o_unaligned` writes
+`align_size` zero bytes. Read reconstructs `data` running all the way to
+`instrs_o`, capturing that padding: `:392` `let data =
+&bytes[size_of::<TFHdr>()..tf_hdr.instrs_o as usize];`, `:397` `data: data.to_vec()`.
+`size_of::<TFHdr>() = 24` (multiple of 8); `align_of::<TFInstr>() = 8`
+(`kind:u32, flags:u32, data:TFSlice{o:u64,size:u64}, val:[u64;2]`, `:46-53`), so
+`instrs_o > instrs_o_unaligned` exactly when `self.data.len() % 8 != 0`, producing
+`8 − (data.len() % 8)` trailing zero bytes.
+
+Masked today because instruction payloads are fetched by *absolute* offset, never
+from the `tf.data` vec: `tf_read_instr` (`:442`) reads each payload via
+`instr.data_slice(bytes)` → `TFInstr::data_slice` (`:144-146`) →
+`TFSlice::as_byte_slice_in` (`:30-32`) `&bytes[o..o+size]` indexing the full
+buffer; the driver `read_instrs(internal_handle, &bytes, &tf.instrs)` (called at
+`:682`) passes `bytes`, not `tf.data`. No round-trip test exists (no `#[test]` /
+`mod tests` in the file), so nothing catches the inequality.
+
+**Failure mode.** Any `TF` whose `data` length is not a multiple of 8 round-trips
+with trailing zero bytes appended to `.data`; a re-serialize of the read-back `TF`
+would grow the file further and can desync the stored absolute instruction
+offsets. Functionally latent only because payloads are fetched by absolute offset.
+
+Observed at zebra-crosslink `6d02a1b` (`test_format.rs:9-16,30-32,46-53,144-146,
+325-352,392-397,442,682`).
+
+---
+
+## 31. zebra-crosslink — `BftBlock`'s documented stateless validations are unimplemented, and the deserialize path bypasses the constructor entirely
+
+**DRAFT. Severity: low.**
+
+**Title:** `BftBlock::try_from` (documented as the "only way to construct" a
+`BftBlock`, performing four stateless validations) checks only the header count,
+hard-codes `version:1`, logs "not yet implemented", and `zcash_deserialize`
+never calls it
+
+**Body:**
+
+The contract (`chain.rs:33-38,56`) lists four validations by the "sole
+constructor" `try_from` — header count = σ, known version, header ordering by
+`previous_block_hash`, PoW solutions validate — and calls it "the safest design",
+"the only way to construct". The implementation (`chain.rs:136-151`) checks only
+`headers.len()` (else `IncorrectConfirmationDepth`), then `error!("not yet
+implemented: all the documented validations")` (`:142`) and hard-codes
+`version: 1` (input version ignored). Validations 2/3/4 are absent.
+`finalization_candidate()` is annotated `UNVERIFIED` (`chain.rs:123`).
+`zcash_deserialize` (`chain.rs:92-118`) builds the struct literal directly
+(`:110-116`) — never calls `try_from`; its own `TODO: Ensure deserialization
+delegates to BftBlock::try_from` (`:48`) — with only a `header_count > 2048`
+sanity cap (`:99-104`), so on the network path not even the count check runs. All
+fields are `pub` (`chain.rs:62-74`), refuting "only way to construct" (direct
+literals at `lib.rs:551`, `viz.rs:2667/2932`).
+
+The network accept path (`service.rs:172-174` / `lib.rs:1227` →
+`validate_bft_block_from_malachite` → `..._already_locked`, `lib.rs:790-820`)
+checks only prev-block fat-pointer linkage (`:798-807`) and that
+`headers.first()` is a known PoW block (`:809-819`), then returns `Pass`; a
+crate-wide grep for `pow`/`equihash`/`check_solution` finds no PoW-solution
+verification of BftBlock headers anywhere. (The guide documents this stub
+accurately, so the guide is not wrong; filed here as the underlying defect.)
+
+**Failure mode.** A decided/proposed `BftBlock` whose `headers` are not a valid
+PoW chain (bad PoW solutions, wrong parent-linkage order, unexpected version) is
+accepted: `try_from` validates none of these, and the deserialize path skips
+`try_from` so even the count check is absent. The remaining σ−1 headers are never
+PoW-verified — latent while only `headers.first()` drives fin-extraction, but the
+documented safety property does not hold.
+
+Observed at zebra-crosslink `6d02a1b` (`chain.rs:33-38,48,56,62-74,92-118,123,
+136-151`; `lib.rs:551,790-820,1227`; `service.rs:172-174`; `viz.rs:2667,2932`).
+
+---
+
+## 32. zebra-crosslink — `finalization_candidate()` returns the chain tip; the `chain.rs` header-order docstring is inverted
+
+**DRAFT. Severity: low.**
+
+**Title:** The docstring claims the in-memory header order is "reversed from the
+specification (built tip-first)", but the sole producer yields ascending /
+deepest-first order matching the spec — so `finalization_candidate() =
+headers.last()` returns the tip (T), not the σ-confirmed snapshot (~T−σ)
+
+**Body:**
+
+The sole producer, `propose_new_bft_block` via `FindBlockHeaders`, yields
+ascending / deepest-first headers: `lib.rs:414-439` anchors at
+`finality_candidate_height = tip−σ`; `zebra-state src/service/read/find.rs:414`
+`height_range = start..=final` with `start = intersection+1 = tip−σ+1`, `final =
+min(tip−σ+160, tip) = tip`, iterated ascending (`:526`); read handler
+`service.rs:1720-1743` returns them unreversed. So `headers[0]` = tip−σ+1
+(deepest), `headers.last()` = tip. This *matches* the spec's deepest-first
+convention (tfl-book `construction.md` @ `fe6e1d6f:420` "exactly σ bc-headers,
+zero-indexed, deepest first"; `:427` `snapshot(B) := B.headers_bc[0]⌈¹` = the
+deepest header's parent).
+
+Yet `chain.rs:52-54` asserts the in-memory order is "reversed from the
+specification (built tip-first)" — factually inverted vs the sole real producer.
+Consequently `finalization_candidate()` (`chain.rs:124-126`, `&self.headers.last()`)
+returns the *tip* (height T, 0 confirmations) rather than the ~σ-confirmed
+snapshot near T−σ; off by σ−1 = 2 blocks. Corroboration: the wired-up validation
+path (`lib.rs:809`) uses `headers.first()` (deepest = spec's `headers_bc[0]`), so
+the live code and the dead accessor disagree and the dead `last()` one is the
+inverted/wrong end. Latent: a grep for `.finalization_candidate(` has zero
+callers. This resolves the guide's explicit open TODO
+(`crosslink-guide.tex:~2345`, "pin down which end of the header vector is the
+snapshot"); the guide itself makes no false claim, it is correctly hedged.
+
+**Failure mode.** `finalization_candidate()`, documented as "the finalization
+candidate for this block", returns the block at the chain tip (height T, 0
+confirmations) instead of the ~σ-confirmed snapshot near T−σ. Any future caller
+that trusts this accessor (e.g. a real validity/finalization path replacing the
+current stub) would finalize the tip, σ−1 blocks too shallow. Latent today
+because the method has no callers.
+
+Observed at zebra-crosslink `6d02a1b` (`chain.rs:52-54,124-126,220`;
+`lib.rs:414-439,809`; `zebra-state src/service/read/find.rs:414,526`,
+`service.rs:1720-1743`); tfl-book `fe6e1d6f` (`construction.md:420,427`).
+
+---
+
+**Not re-filed — duplicate of Wave-0 entry 21.** A 16th Wave-1 raw finding
+(voting-circuits `src/delegation/README.md:300` "all 16 proposals" vs the
+circuit/chain cap of 15) is the same defect as dossier entry 21; the Wave-1
+firsthand cross-checks (voting-circuits `4c39abd`
+`src/vote_proof/circuit.rs:123-143`, `gadgets/authority_decrement.rs:214,315`,
+test `proposal_id_zero_fails` `circuit.rs:2599-2608`; vote-sdk `cb915f5`
+`x/vote/types/keys.go:43,48`, `msgs.go:127-128`) strengthen entry 21's evidence
+but add no new defect.

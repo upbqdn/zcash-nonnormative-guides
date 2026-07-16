@@ -1985,7 +1985,7 @@ its cryptography. The Action circuit exists in three versions --- NU5's
 original, the NU6.2 emergency correction (ZIP-257, Final), and the NU6.3
 Ironwood circuit with the cross-address input (\S\ref{sec:iw-cross}) ---
 named \texttt{InsecurePreNu6\_2}, \texttt{FixedPostNu6\_2}, and
-\texttt{PostNu6\_3} in crate \texttt{orchard} at \texttt{bef8a27}
+\texttt{Ironwood} in crate \texttt{orchard} at \texttt{bef8a27}
 (\texttt{src/circuit.rs}). And from NU6.3 the one protocol carries two value
 pools, the sealed Orchard pool and the current Ironwood pool (ZIP-229,
 Terminology; \S\ref{sec:iw-pools}). The Halo~2 / Pasta stack is unchanged
@@ -2160,14 +2160,19 @@ re-anchored --- its membership proofs rebased onto a later root --- without
 changing its txid, a design ZIP-229 credits to Penumbra.
 
 \paragraph{One circuit, one verifying key.} Both pools share the post-NU6.3
-Action circuit and its keys: in crate \texttt{orchard} at \texttt{bef8a27}, the bundle
-version is the pair of a \texttt{ValuePool} $\{\mathrm{Orchard},
-\mathrm{Ironwood}\}$ and a \texttt{ProtocolVersion}
-$\{\mathrm{InsecureV1}, \mathrm{V2}, \mathrm{V3}\}$;
-\texttt{circuit\_version()} maps V3 to \texttt{PostNu6\_3} for both pools,
-\texttt{note\_version()} maps Orchard to V2 and Ironwood to V3, and
-\texttt{permits\_cross\_address\_transfers()} is false exactly for the pair
-(V3, Orchard) (\texttt{src/lib.rs}, \texttt{src/bundle.rs}). The pools are
+Action circuit and its keys. In crate \texttt{orchard} at \texttt{bef8a27} the
+bundle's flag layout is chosen by the \texttt{BundleFormat} enum ---
+\texttt{PreNu6\_3} or \texttt{Nu6\_3} (\texttt{src/bundle.rs:89--93}) --- and
+the circuit by \texttt{OrchardCircuitVersion} --- \texttt{InsecurePreNu6\_2},
+\texttt{FixedPostNu6\_2}, or \texttt{Ironwood}
+(\texttt{src/circuit.rs:125--135}). For NU6.3 Actions the built circuit
+version is \texttt{Ironwood} (\texttt{circuit\_version()},
+\texttt{src/builder.rs:1251}) in both pools. The cross-address restriction is
+gated by \texttt{supports\_cross\_address\_restriction()} on
+\texttt{OrchardCircuitVersion} --- true only for \texttt{Ironwood}
+(\texttt{src/circuit.rs:147}) --- and by \texttt{Flags::cross\_address\_enabled()}
+(\texttt{src/bundle.rs:216}), which honours the flag bit only under
+\texttt{BundleFormat::Nu6\_3} (\texttt{src/bundle.rs:283--284}). The pools are
 distinguished by their trees, nullifier sets, balances, and component
 position --- not by separate circuits.
 
@@ -2176,12 +2181,16 @@ trapdoor}\label{sec:iw-note}
 
 An Ironwood note is the same tuple $\mathbf{n} = (\mathsf{addr}, v, \rho,
 \psi, \rcm)$ as Definition~\ref{def:note}, committed by the same
-\NoteCommit\ of \S\ref{sec:notes}; the deployed implementation records the
-distinction as a version tag on the note (\texttt{NoteVersion} $\{\mathrm{V2},
-\mathrm{V3}\}$, with \texttt{Note::from\_parts} now taking one; crate
-\texttt{orchard} at \texttt{bef8a27} \texttt{src/note.rs}). What changes is the note
-\emph{plaintext} lead byte and, through it, the derivation of $\rcm$
-(ZIP-2005, Proposed; activation bound to NU6.3).
+\NoteCommit\ of \S\ref{sec:notes}; ZIP-2005 carries the pool distinction on
+the note \emph{plaintext}, through its lead byte. What changes is that lead
+byte and, through it, the derivation of $\rcm$ (ZIP-2005, Proposed;
+activation bound to NU6.3). The format is \emph{specified} --- ZIP-2005
+\S\,4.7.3, landed in \texttt{protocol.tex} at \texttt{zips} commit
+\texttt{69610984} --- but undeployed in crate \texttt{orchard} at
+\texttt{bef8a27}, whose \texttt{Note::from\_parts} (\texttt{src/note.rs:182})
+still takes the four components $(\mathsf{recipient}, v, \rho,
+\mathsf{rseed})$ with no version tag and whose \texttt{Note::rcm()} is the
+legacy single-tag trapdoor of Remark~\ref{rem:iw-legacy-rcm}.
 
 \begin{definition}[Allowed lead bytes, pool-parameterised]%
 \label{def:iw-leadbytes}
@@ -2249,28 +2258,28 @@ under one dispatcher,
 $\mathsf{Derive\_rcm}^{\mathsf{Orchard}}_{\mathsf{rseed}}(\mathsf{leadByte},
 \ldots)$, selecting $\mathtt{0x05} \,\|\, \rho$ for $\mathtt{0x02}$ and the
 hashed $\mathsf{pre\_rcm}$ for $\mathtt{0x03}$ (ZIP-2005 \S\,4.7.3 change).
-The deployed dispatch is \texttt{Note::rcm()} matching \texttt{NoteVersion}:
-V2 to \texttt{rcm\_v2}, V3 to \texttt{rcm\_v3}, the latter one BLAKE2b-512
-call personalised \texttt{Zcash\_ExpandSeed} over
-\[
-\mathsf{rseed} \,\|\, \mathtt{0x0B} \,\|\, \gd^\star \,\|\, \pkd^\star
-\,\|\, \mathrm{LE}_{64}(v) \,\|\, \mathrm{LE}_{256}(\rho) \,\|\,
-\mathrm{LE}_{256}(\psi)
-\]
-(crate \texttt{orchard} at \texttt{bef8a27} \texttt{src/note.rs}, \texttt{rcm\_v3},
-domain separator constant \texttt{0x0B}).
+The deployed \texttt{Note::rcm()} at \texttt{bef8a27} implements only this
+legacy branch: $\rcm := \mathrm{ToScalar}(\mathsf{PRFexpand}_{\mathsf{rseed}}
+(\mathtt{0x05} \,\|\, \rho))$ (\texttt{src/note.rs:132--136}), with
+\texttt{PrfExpand::ORCHARD\_RCM} $= \mathtt{0x05}$ (\texttt{zcash\_spec}~0.2.1,
+\texttt{src/prf\_expand.rs:88}). It carries no version dispatch and no
+$\mathtt{0x03}$/hashed-$\mathsf{pre\_rcm}$ branch; the ZIP-2005 derivation of
+Definition~\ref{def:iw-derive} is specified but not yet implemented there.
 \end{remark}
 
 \paragraph{Decryption is reordered.} Trial decryption
 (\S\ref{sec:noteenc}) rederives the note's quantities to check the
-commitment, and the V3 $\rcm$ depends on $\gd, \pkd$, and $\psi$; the
-specification therefore reorders both the $\ivk$ and $\fvk$ decryption
-procedures to recover $\gd$ and $\pkd$ first, then $\psi$, then $\rcm$
-(ZIP-2005 \S\S\,4.20.2--4.20.3 changes). At the code level the routing is by
-\emph{domain}: sealed marker types give \texttt{OrchardDomain} (expects lead
-byte $\mathtt{0x02}$) and \texttt{IronwoodDomain} (expects $\mathtt{0x03}$),
-each rejecting a plaintext whose lead byte differs (crate \texttt{orchard}
-at \texttt{bef8a27} \texttt{src/note\_encryption.rs}). Because keys are protocol-scoped
+commitment, and the lead-byte-$\mathtt{0x03}$ $\rcm$ depends on $\gd, \pkd$,
+and $\psi$; the specification therefore reorders both the $\ivk$ and $\fvk$
+decryption procedures to recover $\gd$ and $\pkd$ first, then $\psi$, then
+$\rcm$ (ZIP-2005 \S\S\,4.20.2--4.20.3 changes). No such routing is deployed
+at \texttt{bef8a27}: crate \texttt{orchard} has a single \texttt{OrchardDomain}
+(\texttt{src/note\_encryption.rs:84}) that hardcodes the lead byte, rejecting
+any plaintext with $\mathsf{plaintext}[0] \ne \mathtt{0x02}$ (\texttt{:63})
+and emitting $\mathtt{0x02}$ on encryption (\texttt{:172}), with no
+$\mathtt{0x03}$ branch and no \texttt{IronwoodDomain}. Routing the two lead
+bytes to two domains is the implementation ZIP-2005's reordered procedures
+call for, still to be written. Because keys are protocol-scoped
 (\S\ref{sec:iw-pools}), the \emph{same} $\ivk$ trial-decrypts both pools ---
 one key, two domains (ZIP-326; \texttt{zcash\_client\_backend
 src/scanning.rs}). The light-client surface follows suit: compact blocks

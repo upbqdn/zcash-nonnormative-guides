@@ -108,3 +108,123 @@ rationale prose.
 list (`zip-0230.rst:315-322`), not "Rationale for `nAGExpiryHeight`", and label
 it normative. Keep the separate, correct citation of the rationale section for
 the `nAGExpiryHeight = 0`-by-consensus convention.
+
+---
+
+## Wave 1
+
+Wave-1, 2026-07-16. Same model-diff method as Wave-0.
+
+Volumes touched (guide-fix bin): Ironwood, ZSA. Bin totals: **3 guide-fixes**
+(1 high, 1 medium, 1 low). Two are Ironwood `DEPLOYED-at-bef8a27` attribution
+errors — the guide paraphrases the spec correctly but attributes note-format
+code and a version model to orchard `bef8a27` that do not exist there; the
+circuit/cross-address side it also cites *is* deployed, which is what makes the
+false half plausible. The third is an isolated off-by-79-lines citation in ZSA.
+
+### Priority worklist
+
+| # | Sev | Volume : section | Area |
+|---|-----|------------------|------|
+| G4 | high | Ironwood : "The Ironwood note…" / `rem:iw-legacy-rcm` | ZIP-2005 recoverable note format claimed DEPLOYED at orchard `bef8a27`; none of the note-format code exists there |
+| G5 | medium | Ironwood : `sec:iw-pools` "One circuit, one verifying key" | Fabricated orchard bundle/circuit version model (`ValuePool`/`ProtocolVersion` enums, `permits_cross_address_transfers`) — not the deployed enums |
+| G6 | low | ZSA : Orchard fields (AssetId subscript note) | `zip-0227.rst` subscript-omission citation off by ~79 lines (points at a figure) |
+
+---
+
+### G4 — ZIP-2005 recoverable note format claimed DEPLOYED at orchard `bef8a27`; the note-format code does not exist there (high)
+
+**Volume : section.** Ironwood Guide, §"The Ironwood note: lead byte 0x03 and
+the hashed trapdoor" / Remark `rem:iw-legacy-rcm` — `ironwood-guide.tex:2180-2182`,
+`2252-2261`, `2270-2273` (headline ~`2255`).
+
+**What's wrong.** The guide presents the ZIP-2005 quantum-recoverable Ironwood
+note format as *deployed in crate `orchard` @ `bef8a27`*: a note-version tag
+`NoteVersion {V2, V3}` with `Note::from_parts` "now taking one" (`2181-2182`,
+"crate orchard at bef8a27 src/note.rs"); a `Note::rcm()` dispatching on
+`NoteVersion` — "V2 to `rcm_v2`, V3 to `rcm_v3`", the latter one BLAKE2b-512 call
+over the 137-byte `pre_rcm` `rseed || 0x0B || gd* || pkd* || LE64(v) ||
+LE256(rho) || LE256(psi)` ("crate orchard at bef8a27 src/note.rs, `rcm_v3`,
+domain separator constant `0x0B`", `2255-2261`); and note encryption where
+"sealed marker types give `OrchardDomain` (expects `0x02`) and `IronwoodDomain`
+(expects `0x03`) … src/note_encryption.rs" (`2270-2273`). At `bef8a27`
+(`git describe` = `0.14.0-18-gbef8a27`) **none** of this note-format code exists.
+The deployed `rcm()` is the legacy single-tag trapdoor: `src/note.rs:132-136`
+`NoteCommitTrapdoor(to_scalar(PrfExpand::ORCHARD_RCM.with(&self.0,
+&rho.to_bytes())))`, with `ORCHARD_RCM = 0x05` (`zcash_spec-0.2.1
+src/prf_expand.rs:88`), i.e. `rcm = ToScalar(PRFexpand_rseed(0x05 || rho))` — no
+`pre_rcm`, no 137-byte BLAKE2b, no `0x0B`. `from_parts` (`:182-187`) takes four
+args, no version. `note_encryption.rs:63` hardcodes `if plaintext[0] != 0x02 {
+return None; }` and `:172` `np[0] = 0x02;` — one `OrchardDomain` (`:84`), no
+`0x03` branch, no `IronwoodDomain`, no sealed marker pair. Crate-wide grep of
+`src/`: `NoteVersion`, `rcm_v3`, `rcm_v2`, `IronwoodDomain`, `pre_rcm` all zero
+hits. The circuit/cross-address side the guide cites *is* genuinely deployed
+(`OrchardCircuitVersion::Ironwood`, `DISABLE_CROSS_ADDRESS`), and the spec
+paraphrase (Definition `iw-derive`) correctly matches ZIP-2005 §4.7.3 /
+`protocol.tex`; only the "deployed at `bef8a27`" attribution is false.
+
+**The fix.** Re-scope the three note-format passages from DEPLOYED to
+spec/planned. Drop the "crate orchard at bef8a27 src/note.rs /
+src/note_encryption.rs" attributions at `2181-2182`, `2255-2261`, `2270-2273`
+(and the "Every Ironwood-pool output note is a recoverable note" headline
+~`2255`), or replace them with the ZIP-2005 spec citation. Keep Definition
+`iw-derive` as the (correct) spec statement it already is. State that the
+deployed `rcm()` at `bef8a27` is the legacy single-tag trapdoor
+(`note.rs:132-136`), not `rcm_v3`.
+
+---
+
+### G5 — fabricated orchard bundle/circuit version model (medium)
+
+**Volume : section.** Ironwood Guide, §`sec:iw-pools` "One circuit, one verifying
+key" — `ironwood-guide.tex:2162-2172`.
+
+**What's wrong.** The paragraph describes orchard's version model as "the pair of
+a `ValuePool {Orchard, Ironwood}` and a `ProtocolVersion {InsecureV1, V2, V3}`;
+`circuit_version()` maps V3 to `PostNu6_3` for both pools, `note_version()` maps
+Orchard to V2 and Ironwood to V3, and `permits_cross_address_transfers()` is
+false exactly for the pair `(V3, Orchard)`". None of these enums/methods exist at
+`bef8a27`. The real model: `BundleFormat {PreNu6_3, Nu6_3}` (`src/bundle.rs:89-93`);
+`OrchardCircuitVersion {InsecurePreNu6_2, FixedPostNu6_2, Ironwood}`
+(`src/circuit.rs:125-135`); `circuit_version()` returns an `OrchardCircuitVersion`
+(`Ironwood` for NU6.3, not "PostNu6_3", `src/builder.rs:1251`); the cross-address
+predicate is `OrchardCircuitVersion::supports_cross_address_restriction()`
+(`src/circuit.rs:147`) / `Flags::cross_address_enabled()` (`src/bundle.rs:283-284`).
+Crate-wide grep of `src/`: `ValuePool`, `enum ProtocolVersion`, `InsecureV1`,
+`PostNu6_3`, `note_version`, `permits_cross_address_transfers` all zero hits. The
+paragraph is internally inconsistent with the guide's own text: `:1536` correctly
+names `OrchardCircuitVersion::supports_cross_address_restriction` and `1530-1544`
+gives the real three-version model (insecure NU5 / NU6.2 correction / NU6.3
+Ironwood). Possible dedup with G2 (the `0.15.0` version-pin error) — same
+"orchard version" area, but distinct: G2 is a wrong version *number*, G5 a wholly
+fabricated enum/method *model*.
+
+**The fix.** Rewrite `2162-2172` to the deployed model — `BundleFormat
+{PreNu6_3, Nu6_3}`, `OrchardCircuitVersion {InsecurePreNu6_2, FixedPostNu6_2,
+Ironwood}`, `circuit_version()` → `Ironwood` at NU6.3, cross-address gated by
+`supports_cross_address_restriction()` / `Flags::cross_address_enabled()` —
+matching the guide's own correct `1530-1544`.
+
+---
+
+### G6 — ZSA `AssetId`-subscript citation off by ~79 lines (low)
+
+**Volume : section.** ZSA Guide, Orchard fields (the `AssetId` subscript
+convention) — `zsa-guide.tex:689-690`.
+
+**What's wrong.** The guide writes "The subscript $\mathsf{AssetId}$ may be
+omitted when clear from context (`zip-0227.rst:303--308`)." At the guide's target
+commit `69610984` (anchored `zsa-guide.tex:118`), `zip-0227.rst:303-308` is the
+OrchardZSA asset-identifier-relation *figure* block (`:303` `.. figure::
+../rendered/assets/images/zip-0227-asset-identifier-relation-orchard-zsa.png`,
+`:304-306` `:width:`/`:align:`/`:figclass:` directives, `:308` the "Diagram
+relating the Issuer identifier, asset description, asset description hash, Asset
+Identifier, Asset Digest, and Asset Base for the OrchardZSA Protocol." caption).
+The actual subscript-omission note is at `zip-0227.rst:224`: "**Note:** To keep
+notations light and concise, we may omit $\mathsf{AssetId}$ in the subscript when
+the Asset Identifier is clear from the context." (grep confirms it is the only
+such note in the file). Off by ~79 lines. Isolated: ~15 other zip-0227/0226/0230
+line citations in the same guide spot-checked correct.
+
+**The fix.** Change the citation at `zsa-guide.tex:690` from `zip-0227.rst:303--308`
+to `zip-0227.rst:224`.
