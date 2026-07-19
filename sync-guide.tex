@@ -264,7 +264,9 @@ lines~14--86):
   as ``only partially implemented: currently only \texttt{prevHash} is
   checked'' (ZIP~307, ``Block header validation''). Client-side, only
   \texttt{prevHash} and height continuity are enforced
-  (\S\ref{sec:sync-compact-scan}).
+  (\S\ref{sec:sync-compact-scan}). What a header-verifying client would
+  gain from the ZIP-221 chain-history commitment is the \emph{FlyClient
+  Guide}'s subject.
 %% TODO: confirm no deployed client ever requests headers before stating the
 %% header path dead categorically (open question).
 \item Field \texttt{protoVersion} never varies on the wire.
@@ -784,7 +786,10 @@ security model is deliberately narrow: the client obtains \emph{payment
 detection privacy} against an honest-but-curious proxy, and trusts that
 proxy to provide a correct view of the best chain; network-level privacy
 (Tor, Nym) is assumed to be provided separately; spending privacy is out of
-scope (ZIP~307, \S~``Security Model'').
+scope (ZIP~307, \S~``Security Model''). The chain has carried commitments
+designed to let a client check that view succinctly since Heartwood
+(ZIP~221, via \texttt{hashBlockCommitments}); no deployed client consumes
+them (\emph{FlyClient Guide}, \S``The deployment gap'').
 
 \paragraph{Where the contract lives.} The wire contract is \emph{not} in
 the ZIP. The two protobuf files that define the service ---

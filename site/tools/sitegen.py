@@ -30,6 +30,7 @@ VOLUME_META = [
     ("ironwood-guide", "Deployed protocol", "deployed"),
     ("wallet-guide", "Deployed protocol", "deployed"),
     ("sync-guide", "Deployed protocol", "deployed"),
+    ("flyclient-guide", "Deployed protocol", "deployed"),
     ("voting-guide", "Frontier", "frontier"),
     ("zsa-guide", "Frontier", "frontier"),
     ("tachyon-guide", "Frontier", "design-stage"),
@@ -129,7 +130,7 @@ def webprep():
 
 
 ROMANS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-          "XI", "XII"]
+          "XI", "XII", "XIII"]
 
 
 def vol_title(vol):
