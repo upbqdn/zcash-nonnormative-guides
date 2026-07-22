@@ -342,7 +342,12 @@ figure.ltx_table { overflow-x: auto; max-width: 100%; }
   display: block; overflow-x: auto; max-width: 100%; width: max-content;
 }
 .ltx_graphics { max-width: 100%; height: auto; }
-figure.ltx_figure { margin: 1.6rem 0; }
+/* a figure wider than the column scrolls inside its box rather than pushing
+   the page. This catches scaled diagrams, whose ltx_transformed_outer wrapper
+   carries a hard pt width baked in from the desktop layout that max-width on
+   the inner image cannot reach. */
+figure.ltx_figure { margin: 1.6rem 0; overflow-x: auto; max-width: 100%; }
+.ltx_transformed_outer { max-width: 100%; }
 figure.ltx_figure figcaption { color: var(--muted); font-size: .9rem; }
 
 /* TOC + navigation */
